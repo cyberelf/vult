@@ -1,0 +1,132 @@
+//! Clipboard manager with auto-clear functionality
+
+use arboard::Clipboard;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::Mutex;
+use tokio::time::{interval, Instant};
+
+/// Clipboard manager that auto-clears after a timeout
+pub struct ClipboardManager {
+    inner: Arc<Mutex<ClipboardManagerInner>>,
+}
+
+struct ClipboardManagerInner {
+    clipboard: Option<Clipboard>,
+    last_copied_at: Option<Instant>,
+    timeout: Duration,
+    original_content: Option<String>,
+}
+
+impl ClipboardManager {
+    /// Creates a new clipboard manager
+    pub fn new() -> Result<Self, String> {
+        Ok(Self {
+            inner: Arc::new(Mutex::new(ClipboardManagerInner {
+                clipboard: Clipboard::new().ok(),
+                last_copied_at: None,
+                timeout: Duration::from_secs(30),
+                original_content: None,
+            })),
+        })
+    }
+
+    /// Copies text to clipboard with auto-clear after timeout
+    pub async fn copy_with_timeout(&self, text: String, timeout: Duration) {
+        let mut inner = self.inner.lock().await;
+
+        // Save original content
+        let original = inner
+            .clipboard
+            .as_mut()
+            .and_then(|cb| cb.get_text().ok());
+
+        // Copy new content
+        if let Some(clipboard) = inner.clipboard.as_mut() {
+            let _ = clipboard.set_text(&text);
+        }
+
+        inner.original_content = original;
+        inner.last_copied_at = Some(Instant::now());
+        inner.timeout = timeout;
+
+        drop(inner);
+
+        // Spawn background task to clear clipboard
+        let inner_clone = Arc::clone(&self.inner);
+        tokio::spawn(async move {
+            tokio::time::sleep(timeout).await;
+            let mut inner = inner_clone.lock().await;
+
+            // Only clear if we're still the last one who copied
+            if let Some(last_copied) = inner.last_copied_at {
+                if last_copied.elapsed() >= timeout {
+                    // Restore original content or clear
+                    if let Some(clipboard) = inner.clipboard.as_mut() {
+                        if let Some(original) = &inner.original_content {
+                            let _ = clipboard.set_text(original);
+                        } else {
+                            let _ = clipboard.set_text("");
+                        }
+                    }
+                    inner.last_copied_at = None;
+                    inner.original_content = None;
+                }
+            }
+        });
+    }
+
+    /// Immediately clears the clipboard
+    pub async fn clear_now(&self) {
+        let mut inner = self.inner.lock().await;
+        if let Some(clipboard) = inner.clipboard.as_mut() {
+            if let Some(original) = &inner.original_content {
+                let _ = clipboard.set_text(original);
+            } else {
+                let _ = clipboard.set_text("");
+            }
+        }
+        inner.last_copied_at = None;
+        inner.original_content = None;
+    }
+
+    /// Starts the background auto-clear checker
+    pub fn start_auto_clear_checker(&self) {
+        let inner_clone = Arc::clone(&self.inner);
+        tokio::spawn(async move {
+            let mut ticker = interval(Duration::from_secs(1));
+            loop {
+                ticker.tick().await;
+                let mut inner = inner_clone.lock().await;
+
+                if let Some(last_copied) = inner.last_copied_at {
+                    if last_copied.elapsed() >= inner.timeout {
+                        let original = inner.original_content.clone();
+                        if let Some(clipboard) = inner.clipboard.as_mut() {
+                            if let Some(orig) = original {
+                                let _ = clipboard.set_text(&orig);
+                            } else {
+                                let _ = clipboard.set_text("");
+                            }
+                        }
+                        inner.last_copied_at = None;
+                        inner.original_content = None;
+                    }
+                }
+            }
+        });
+    }
+}
+
+impl Default for ClipboardManager {
+    fn default() -> Self {
+        Self::new().unwrap_or_else(|_| Self {
+            inner: Arc::new(Mutex::new(ClipboardManagerInner {
+                clipboard: None,
+                last_copied_at: None,
+                timeout: Duration::from_secs(30),
+                original_content: None,
+            })),
+        })
+    }
+}

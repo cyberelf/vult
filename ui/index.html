@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vult - Secure API Key Vault</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Setup Screen -->
+        <div id="setup-screen" class="screen hidden">
+            <div class="container">
+                <h1>Welcome to Vult</h1>
+                <p class="subtitle">Secure API Key Vault</p>
+                <div class="card">
+                    <h2>Create Your Vault</h2>
+                    <p>Choose a PIN to secure your vault. Make sure to remember it - there is no recovery option.</p>
+                    <form id="setup-form">
+                        <div class="form-group">
+                            <label for="setup-pin">PIN (min 6 characters)</label>
+                            <input type="password" id="setup-pin" minlength="6" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="setup-pin-confirm">Confirm PIN</label>
+                            <input type="password" id="setup-pin-confirm" minlength="6" required>
+                        </div>
+                        <div id="setup-error" class="error-message hidden"></div>
+                        <button type="submit" class="btn btn-primary">Create Vault</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unlock Screen -->
+        <div id="unlock-screen" class="screen hidden">
+            <div class="container">
+                <h1>Vult</h1>
+                <p class="subtitle">Secure API Key Vault</p>
+                <div class="card">
+                    <h2>Unlock Vault</h2>
+                    <form id="unlock-form">
+                        <div class="form-group">
+                            <label for="unlock-pin">PIN</label>
+                            <input type="password" id="unlock-pin" minlength="6" required>
+                        </div>
+                        <div id="unlock-error" class="error-message hidden"></div>
+                        <button type="submit" class="btn btn-primary">Unlock</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Vault Screen -->
+        <div id="vault-screen" class="screen hidden">
+            <div class="container vault-container">
+                <header class="vault-header">
+                    <h1>My API Keys</h1>
+                    <div class="header-actions">
+                        <button id="add-key-btn" class="btn btn-primary">+ Add Key</button>
+                        <button id="lock-btn" class="btn btn-secondary">Lock</button>
+                    </div>
+                </header>
+
+                <div class="search-bar">
+                    <input type="text" id="search-input" placeholder="Search by app name, key name, or description...">
+                </div>
+
+                <div id="keys-list" class="keys-list">
+                    <!-- Keys will be rendered here -->
+                </div>
+
+                <div id="empty-state" class="empty-state hidden">
+                    <p>No API keys yet. Click "Add Key" to store your first API key.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit Key Modal -->
+        <div id="key-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title">Add API Key</h2>
+                    <button class="close-btn" id="close-modal">&times;</button>
+                </div>
+                <form id="key-form">
+                    <input type="hidden" id="key-id">
+                    <div class="form-group">
+                        <label for="app-name">App Name *</label>
+                        <input type="text" id="app-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="key-name">Key Name *</label>
+                        <input type="text" id="key-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="api-url">API URL</label>
+                        <input type="url" id="api-url" placeholder="https://api.example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="key-value">API Key Value *</label>
+                        <input type="password" id="key-value" required>
+                    </div>
+                    <div id="key-form-error" class="error-message hidden"></div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="cancel-key-btn">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- View Key Modal -->
+        <div id="view-key-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>API Key Details</h2>
+                    <button class="close-btn" id="close-view-modal">&times;</button>
+                </div>
+                <div class="key-details">
+                    <div class="detail-row">
+                        <span class="label">App Name:</span>
+                        <span class="value" id="view-app-name"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Key Name:</span>
+                        <span class="value" id="view-key-name"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">API URL:</span>
+                        <span class="value" id="view-api-url"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Description:</span>
+                        <span class="value" id="view-description"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">API Key:</span>
+                        <div class="key-value-container">
+                            <span class="value masked" id="view-key-value">••••••••••••</span>
+                            <button type="button" class="btn btn-small" id="reveal-btn">Reveal</button>
+                            <button type="button" class="btn btn-small" id="copy-btn">Copy</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="close-view-btn">Close</button>
+                    <button type="button" class="btn btn-primary" id="edit-key-btn">Edit</button>
+                    <button type="button" class="btn btn-danger" id="delete-key-btn">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
