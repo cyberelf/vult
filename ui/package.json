@@ -1,0 +1,16 @@
+{
+  "name": "vult-ui-tests",
+  "version": "1.0.0",
+  "description": "Frontend tests for Vult Vault",
+  "scripts": {
+    "test": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^9.3.0",
+    "@testing-library/user-event": "^14.5.0",
+    "happy-dom": "^12.0.0",
+    "vitest": "^1.0.0"
+  }
+}

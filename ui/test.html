@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vult Vault - Frontend Tests</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        .test-summary {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .test-stats {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat {
+            flex: 1;
+            background: #3d3d3d;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat.pass { border-left: 4px solid #4CAF50; }
+        .stat.fail { border-left: 4px solid #f44336; }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .test-list {
+            margin: 20px 0;
+        }
+        .test-item {
+            background: #2d2d2d;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #666;
+        }
+        .test-item.pass { border-left-color: #4CAF50; }
+        .test-item.fail { border-left-color: #f44336; }
+        .test-item.skip { border-left-color: #ff9800; }
+        .test-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .test-error {
+            background: #1a1a1a;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #f44336;
+        }
+        #progress {
+            width: 100%;
+            height: 30px;
+            background: #2d2d2d;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        #progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .suite {
+            margin: 30px 0;
+        }
+        .suite-name {
+            font-size: 1.2em;
+            color: #4CAF50;
+            margin-bottom: 15px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Vult Vault - Frontend Test Suite</h1>
+
+    <div class="test-summary">
+        <div id="progress"><div id="progress-bar" style="width: 0%">0%</div></div>
+        <div class="test-stats">
+            <div class="stat pass">
+                <div class="stat-value" id="pass-count">0</div>
+                <div>Passed</div>
+            </div>
+            <div class="stat fail">
+                <div class="stat-value" id="fail-count">0</div>
+                <div>Failed</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="total-count">0</div>
+                <div>Total</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="test-output"></div>
+
+    <script>
+        // Simple test framework for frontend
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.results = [];
+                this.suites = {};
+            }
+
+            test(name, fn) {
+                this.tests.push({ name, fn });
+            }
+
+            suite(name, fn) {
+                this.suites[name] = fn;
+            }
+
+            async run() {
+                const output = document.getElementById('test-output');
+                const totalTests = this.tests.length;
+                let passCount = 0;
+                let failCount = 0;
+
+                // Group tests by suite
+                const suiteTests = {};
+                this.tests.forEach(test => {
+                    const suite = test.name.split(':')[0] || 'General';
+                    if (!suiteTests[suite]) suiteTests[suite] = [];
+                    suiteTests[suite].push(test);
+                });
+
+                // Run each suite
+                for (const [suiteName, tests] of Object.entries(suiteTests)) {
+                    const suiteDiv = document.createElement('div');
+                    suiteDiv.className = 'suite';
+                    suiteDiv.innerHTML = `<div class="suite-name">${suiteName}</div>`;
+                    output.appendChild(suiteDiv);
+
+                    for (const test of tests) {
+                        const testDiv = document.createElement('div');
+                        testDiv.className = 'test-item';
+
+                        try {
+                            await test.fn();
+                            testDiv.classList.add('pass');
+                            testDiv.innerHTML = `<div class="test-name">✓ ${test.name}</div>`;
+                            passCount++;
+                        } catch (error) {
+                            testDiv.classList.add('fail');
+                            testDiv.innerHTML = `
+                                <div class="test-name">✗ ${test.name}</div>
+                                <div class="test-error">${error.message}</div>
+                            `;
+                            failCount++;
+                        }
+
+                        suiteDiv.appendChild(testDiv);
+
+                        // Update progress
+                        const progress = ((passCount + failCount) / totalTests * 100).toFixed(1);
+                        document.getElementById('progress-bar').style.width = progress + '%';
+                        document.getElementById('progress-bar').textContent = progress + '%';
+                        document.getElementById('pass-count').textContent = passCount;
+                        document.getElementById('fail-count').textContent = failCount;
+                        document.getElementById('total-count').textContent = passCount + failCount;
+                    }
+                }
+
+                return { pass: passCount, fail: failCount, total: totalTests };
+            }
+        }
+
+        // Assertion helpers
+        const assert = {
+            equal: (actual, expected, message = '') => {
+                if (actual !== expected) {
+                    throw new Error(message || `Expected ${expected}, but got ${actual}`);
+                }
+            },
+            notEqual: (actual, expected, message = '') => {
+                if (actual === expected) {
+                    throw new Error(message || `Expected not ${expected}`);
+                }
+            },
+            truthy: (value, message = '') => {
+                if (!value) {
+                    throw new Error(message || `Expected truthy value, got ${value}`);
+                }
+            },
+            falsy: (value, message = '') => {
+                if (value) {
+                    throw new Error(message || `Expected falsy value, got ${value}`);
+                }
+            },
+            throws: async (fn, message = '') => {
+                try {
+                    await fn();
+                    throw new Error(message || `Expected function to throw`);
+                } catch (error) {
+                    // Expected - function threw
+                }
+            },
+            contains: (haystack, needle, message = '') => {
+                if (!haystack.includes(needle)) {
+                    throw new Error(message || `Expected "${haystack}" to contain "${needle}"`);
+                }
+            }
+        };
+
+        // Test suite
+        const runner = new TestRunner();
+
+        // DOM Tests
+        runner.test('DOM: Setup screen exists', () => {
+            const setupScreen = document.getElementById('setup-screen');
+            assert.truthy(setupScreen, 'Setup screen element should exist');
+        });
+
+        runner.test('DOM: Unlock screen exists', () => {
+            const unlockScreen = document.getElementById('unlock-screen');
+            assert.truthy(unlockScreen, 'Unlock screen element should exist');
+        });
+
+        runner.test('DOM: Vault screen exists', () => {
+            const vaultScreen = document.getElementById('vault-screen');
+            assert.truthy(vaultScreen, 'Vault screen element should exist');
+        });
+
+        runner.test('DOM: Key modal exists', () => {
+            const keyModal = document.getElementById('key-modal');
+            assert.truthy(keyModal, 'Key modal element should exist');
+        });
+
+        runner.test('DOM: All forms exist', () => {
+            const setupForm = document.getElementById('setup-form');
+            const unlockForm = document.getElementById('unlock-form');
+            const keyForm = document.getElementById('key-form');
+
+            assert.truthy(setupForm, 'Setup form should exist');
+            assert.truthy(unlockForm, 'Unlock form should exist');
+            assert.truthy(keyForm, 'Key form should exist');
+        });
+
+        runner.test('DOM: Buttons exist', () => {
+            const addKeyBtn = document.getElementById('add-key-btn');
+            const lockBtn = document.getElementById('lock-btn');
+
+            assert.truthy(addKeyBtn, 'Add key button should exist');
+            assert.truthy(lockBtn, 'Lock button should exist');
+        });
+
+        // Screen Management Tests
+        runner.test('Screen: Setup screen is visible initially', () => {
+            const setupScreen = document.getElementById('setup-screen');
+            const unlockScreen = document.getElementById('unlock-screen');
+            const vaultScreen = document.getElementById('vault-screen');
+
+            assert.equal(setupScreen.classList.contains('hidden'), false,
+                'Setup screen should be visible initially');
+            assert.equal(unlockScreen.classList.contains('hidden'), true,
+                'Unlock screen should be hidden initially');
+            assert.equal(vaultScreen.classList.contains('hidden'), true,
+                'Vault screen should be hidden initially');
+        });
+
+        // Input Validation Tests
+        runner.test('Form: Setup form has required fields', () => {
+            const setupPin = document.getElementById('setup-pin');
+            const setupPinConfirm = document.getElementById('setup-pin-confirm');
+
+            assert.truthy(setupPin, 'Setup PIN input should exist');
+            assert.truthy(setupPinConfirm, 'Setup PIN confirm input should exist');
+            assert.equal(setupPin.type, 'password', 'PIN should be password type');
+            assert.equal(setupPinConfirm.type, 'password', 'Confirm PIN should be password type');
+        });
+
+        runner.test('Form: Unlock form has required fields', () => {
+            const unlockPin = document.getElementById('unlock-pin');
+
+            assert.truthy(unlockPin, 'Unlock PIN input should exist');
+            assert.equal(unlockPin.type, 'password', 'PIN should be password type');
+        });
+
+        runner.test('Form: Key form has all required fields', () => {
+            const appName = document.getElementById('app-name');
+            const keyName = document.getElementById('key-name');
+            const keyValue = document.getElementById('key-value');
+
+            assert.truthy(appName, 'App name input should exist');
+            assert.truthy(keyName, 'Key name input should exist');
+            assert.truthy(keyValue, 'Key value input should exist');
+            assert.equal(keyValue.type, 'password', 'Key value should be password type');
+        });
+
+        // Utility Function Tests
+        runner.test('Utility: showError function exists', () => {
+            assert.truthy(typeof showError === 'function', 'showError should be a function');
+        });
+
+        runner.test('Utility: hideError function exists', () => {
+            assert.truthy(typeof hideError === 'function', 'hideError should be a function');
+        });
+
+        runner.test('Utility: showScreen function exists', () => {
+            assert.truthy(typeof showScreen === 'function', 'showScreen should be a function');
+        });
+
+        runner.test('Utility: escapeHtml function exists', () => {
+            assert.truthy(typeof escapeHtml === 'function', 'escapeHtml should be a function');
+        });
+
+        runner.test('Utility: escapeHtml sanitizes HTML', () => {
+            const input = '<script>alert("xss")</script>';
+            const output = escapeHtml(input);
+
+            assert.contains(output, '&lt;', '< should be escaped');
+            assert.contains(output, '&gt;', '> should be escaped');
+            assert.equal(output.includes('<script'), false, 'Script tags should be escaped');
+        });
+
+        // UI State Tests
+        runner.test('UI: Search input exists', () => {
+            const searchInput = document.getElementById('search-input');
+            assert.truthy(searchInput, 'Search input should exist');
+            assert.equal(searchInput.type, 'text', 'Search should be text input');
+            assert.equal(searchInput.placeholder, 'Search API keys...',
+                'Search should have correct placeholder');
+        });
+
+        runner.test('UI: Keys list container exists', () => {
+            const keysList = document.getElementById('keys-list');
+            const emptyState = document.getElementById('empty-state');
+
+            assert.truthy(keysList, 'Keys list container should exist');
+            assert.truthy(emptyState, 'Empty state container should exist');
+        });
+
+        runner.test('UI: Lock button has correct text', () => {
+            const lockBtn = document.getElementById('lock-btn');
+            assert.equal(lockBtn.textContent.trim(), 'Lock Vault',
+                'Lock button should have correct text');
+        });
+
+        // Modal Tests
+        runner.test('Modal: View key modal exists', () => {
+            const viewKeyModal = document.getElementById('view-key-modal');
+            assert.truthy(viewKeyModal, 'View key modal should exist');
+        });
+
+        runner.test('Modal: Modal close buttons exist', () => {
+            const closeKeyModal = document.getElementById('close-modal');
+            const cancelKeyBtn = document.getElementById('cancel-key-btn');
+            const closeViewModal = document.getElementById('close-view-modal');
+            const closeViewBtn = document.getElementById('close-view-btn');
+
+            assert.truthy(closeKeyModal, 'Close key modal button should exist');
+            assert.truthy(cancelKeyBtn, 'Cancel key button should exist');
+            assert.truthy(closeViewModal, 'Close view modal button should exist');
+            assert.truthy(closeViewBtn, 'Close view button should exist');
+        });
+
+        runner.test('Modal: Reveal and copy buttons exist in view modal', () => {
+            const revealBtn = document.getElementById('reveal-btn');
+            const copyBtn = document.getElementById('copy-btn');
+            const editKeyBtn = document.getElementById('edit-key-btn');
+            const deleteKeyBtn = document.getElementById('delete-key-btn');
+
+            assert.truthy(revealBtn, 'Reveal button should exist');
+            assert.truthy(copyBtn, 'Copy button should exist');
+            assert.truthy(editKeyBtn, 'Edit key button should exist');
+            assert.truthy(deleteKeyBtn, 'Delete key button should exist');
+        });
+
+        // Tauri API Tests
+        runner.test('Tauri: invoke function exists', () => {
+            assert.truthy(typeof invoke === 'function', 'invoke should be available from Tauri');
+        });
+
+        runner.test('Tauri: listen function exists', () => {
+            assert.truthy(typeof listen === 'function', 'listen should be available from Tauri');
+        });
+
+        // Integration Tests (would require Tauri bridge)
+        runner.test('Integration: State management variables exist', () => {
+            assert.truthy(typeof currentKeyId !== 'undefined', 'currentKeyId should be defined');
+            assert.truthy(Array.isArray(allKeys), 'allKeys should be an array');
+        });
+
+        // Run tests
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🧪 Starting frontend tests...');
+            const results = await runner.run();
+            console.log('✅ Tests complete:', results);
+        });
+    </script>
+</body>
+</html>

@@ -10,7 +10,7 @@
     "devUrl": "http://localhost:1420"
   },
   "app": {
-    "withGlobalTauri": false,
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "Vult - Secure API Key Vault",
@@ -23,12 +23,13 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": ["default"]
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": []
+    "icon": ["icons/icon.ico"]
   }
 }

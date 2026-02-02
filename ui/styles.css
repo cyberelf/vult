@@ -193,47 +193,159 @@ textarea {
     font-size: 1rem;
 }
 
-.keys-list {
-    display: grid;
-    gap: 1rem;
-}
-
-.key-card {
+/* Keys Table */
+.keys-table {
+    width: 100%;
+    border-collapse: collapse;
     background: var(--card-bg);
-    border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 1.25rem;
-    cursor: pointer;
-    transition: all 0.2s;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.key-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+.keys-table.hidden {
+    display: none;
 }
 
-.key-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: start;
-    margin-bottom: 0.5rem;
+.keys-table thead {
+    background: var(--bg-color);
+    border-bottom: 2px solid var(--border-color);
 }
 
-.key-app-name {
+.keys-table th {
+    padding: 1rem;
+    text-align: left;
     font-weight: 600;
-    font-size: 1.125rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.keys-table th:last-child {
+    width: 200px;
+    text-align: center;
+}
+
+.keys-table tbody tr {
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.15s;
+}
+
+.keys-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.keys-table tbody tr:hover {
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.keys-table tbody tr.editing {
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.keys-table td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.keys-table td:last-child {
+    text-align: center;
+}
+
+.key-value {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+    font-size: 0.875rem;
+    color: var(--primary-color);
+    word-break: break-all;
+}
+
+.key-value.masked {
+    letter-spacing: 0.25rem;
+    color: var(--text-muted);
+}
+
+/* Action buttons in table */
+.actions-cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
     color: var(--text-color);
 }
 
-.key-key-name {
+.btn-icon.btn-toggle-visibility:hover {
+    background: rgba(37, 99, 235, 0.2);
     color: var(--primary-color);
+}
+
+.btn-icon.btn-copy:hover {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.btn-icon.btn-copy.copied {
+    background: rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+}
+
+.btn-icon.btn-edit:hover {
+    background: rgba(37, 99, 235, 0.2);
+    color: var(--primary-color);
+}
+
+.btn-icon.btn-delete:hover {
+    background: rgba(220, 38, 38, 0.2);
+    color: var(--danger-color);
+}
+
+.btn-icon.btn-save {
+    color: #22c55e;
+}
+
+.btn-icon.btn-save:hover {
+    background: rgba(34, 197, 94, 0.2);
+}
+
+.btn-icon.btn-cancel {
+    color: var(--danger-color);
+}
+
+.btn-icon.btn-cancel:hover {
+    background: rgba(220, 38, 38, 0.2);
+}
+
+/* Edit inputs in table */
+.edit-input {
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-color);
     font-size: 0.875rem;
 }
 
-.key-description {
-    color: var(--text-muted);
-    font-size: 0.875rem;
-    margin-top: 0.5rem;
+.edit-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
 }
 
 .empty-state {

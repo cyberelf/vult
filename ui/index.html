@@ -66,9 +66,21 @@
                     <input type="text" id="search-input" placeholder="Search by app name, key name, or description...">
                 </div>
 
-                <div id="keys-list" class="keys-list">
-                    <!-- Keys will be rendered here -->
-                </div>
+                <table class="keys-table" id="keys-table">
+                    <thead>
+                        <tr>
+                            <th>Key Name</th>
+                            <th>App Name</th>
+                            <th>API URL</th>
+                            <th>Description</th>
+                            <th>API Key</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keys-list">
+                        <!-- Keys will be rendered here as table rows -->
+                    </tbody>
+                </table>
 
                 <div id="empty-state" class="empty-state hidden">
                     <p>No API keys yet. Click "Add Key" to store your first API key.</p>
@@ -86,12 +98,12 @@
                 <form id="key-form">
                     <input type="hidden" id="key-id">
                     <div class="form-group">
-                        <label for="app-name">App Name *</label>
-                        <input type="text" id="app-name" required>
-                    </div>
-                    <div class="form-group">
                         <label for="key-name">Key Name *</label>
                         <input type="text" id="key-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="app-name">App Name (optional)</label>
+                        <input type="text" id="app-name" placeholder="e.g., GitHub, OpenAI">
                     </div>
                     <div class="form-group">
                         <label for="api-url">API URL</label>
@@ -114,48 +126,22 @@
             </div>
         </div>
 
-        <!-- View Key Modal -->
-        <div id="view-key-modal" class="modal hidden">
-            <div class="modal-content">
+        <!-- Delete Confirmation Modal -->
+        <div id="delete-modal" class="modal hidden">
+            <div class="modal-content modal-small">
                 <div class="modal-header">
-                    <h2>API Key Details</h2>
-                    <button class="close-btn" id="close-view-modal">&times;</button>
+                    <h2>Confirm Delete</h2>
+                    <button class="close-btn" id="close-delete-modal">&times;</button>
                 </div>
-                <div class="key-details">
-                    <div class="detail-row">
-                        <span class="label">App Name:</span>
-                        <span class="value" id="view-app-name"></span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="label">Key Name:</span>
-                        <span class="value" id="view-key-name"></span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="label">API URL:</span>
-                        <span class="value" id="view-api-url"></span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="label">Description:</span>
-                        <span class="value" id="view-description"></span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="label">API Key:</span>
-                        <div class="key-value-container">
-                            <span class="value masked" id="view-key-value">••••••••••••</span>
-                            <button type="button" class="btn btn-small" id="reveal-btn">Reveal</button>
-                            <button type="button" class="btn btn-small" id="copy-btn">Copy</button>
-                        </div>
-                    </div>
-                </div>
+                <p>Are you sure you want to delete this API key? This action cannot be undone.</p>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="close-view-btn">Close</button>
-                    <button type="button" class="btn btn-primary" id="edit-key-btn">Edit</button>
-                    <button type="button" class="btn btn-danger" id="delete-key-btn">Delete</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-delete-btn">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-btn">Delete</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

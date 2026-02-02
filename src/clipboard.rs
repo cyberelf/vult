@@ -62,9 +62,10 @@ impl ClipboardManager {
             if let Some(last_copied) = inner.last_copied_at {
                 if last_copied.elapsed() >= timeout {
                     // Restore original content or clear
+                    let original = inner.original_content.clone();
                     if let Some(clipboard) = inner.clipboard.as_mut() {
-                        if let Some(original) = &inner.original_content {
-                            let _ = clipboard.set_text(original);
+                        if let Some(orig) = original {
+                            let _ = clipboard.set_text(&orig);
                         } else {
                             let _ = clipboard.set_text("");
                         }
@@ -79,9 +80,10 @@ impl ClipboardManager {
     /// Immediately clears the clipboard
     pub async fn clear_now(&self) {
         let mut inner = self.inner.lock().await;
+        let original = inner.original_content.clone();
         if let Some(clipboard) = inner.clipboard.as_mut() {
-            if let Some(original) = &inner.original_content {
-                let _ = clipboard.set_text(original);
+            if let Some(orig) = original {
+                let _ = clipboard.set_text(&orig);
             } else {
                 let _ = clipboard.set_text("");
             }

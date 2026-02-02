@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo build:*)",
+      "Bash(cargo tauri icon --help:*)",
+      "Bash(npx @tauri-apps/cli icon:*)",
+      "Bash(node:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(cargo run:*)",
+      "Bash(cargo:*)",
+      "Bash(timeout:*)",
+      "Bash(sqlite3:*)"
+    ]
+  }
+}

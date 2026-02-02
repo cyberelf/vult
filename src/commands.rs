@@ -184,8 +184,8 @@ pub async fn delete_api_key(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
     db: tauri::State<'_, Arc<VaultDb>>,
 ) -> Result<CommandResponse<()>, String> {
-    let key = auth_manager.get_vault_key().await.map_err(|e| e.to_string())?;
-    db.delete_api_key(&id, &key).await.map_err(|e| e.to_string())?;
+    auth_manager.get_vault_key().await.map_err(|e| e.to_string())?;
+    db.delete_api_key(&id).await.map_err(|e| e.to_string())?;
     Ok(CommandResponse::success(()))
 }
 
