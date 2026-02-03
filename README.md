@@ -23,6 +23,35 @@ A cross-platform desktop application for securely storing and managing API keys 
 - 📊 **Table View**: Clean, table-based UI with inline editing
 - 💾 **Database Migration**: Automatic schema migrations with backups
 - 🖥️ **Cross-Platform**: Windows, macOS, and Linux support
+- 📱 **Responsive UI**: Adapts smoothly to any window size from 320px to 4K+
+
+## Responsive Design
+
+Vult features a fully responsive, autoscaling UI that adapts to any window size.
+
+### Viewport Support
+- **Small (320px - 767px)**: Compact layout with stacked components
+- **Medium (768px - 1023px)**: Tablet/compact desktop layout
+- **Large (1024px+)**: Full desktop layout with expanded spacing
+
+### Responsive Features
+- **Fluid Typography**: Text scales smoothly using CSS `clamp()` - no discrete jumps
+- **Autoscaling Components**: Buttons, forms, and modals adapt to viewport size
+- **Responsive Tables**: Transforms to stacked card layout on small viewports
+- **Touch-Friendly**: All interactive elements meet 44x44px touch target minimum
+- **Keyboard Accessible**: Visible focus rings on all interactive elements
+
+### Breakpoint Strategy
+| Breakpoint | Width | Layout |
+|------------|-------|--------|
+| Small | 320px - 767px | Single column, stacked cards |
+| Medium | 768px - 1023px | Two-column forms, optimized spacing |
+| Large | 1024px+ | Multi-column, expanded spacing |
+
+### Container Widths
+- **Setup/Unlock Screens**: `clamp(320px, 80vw, 600px)`
+- **Vault Screen**: `clamp(400px, 90vw, 1200px)`
+- **Modals**: `min(90vw, 500px)` on small, `500px` fixed on large
 
 ## Security
 

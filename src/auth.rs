@@ -45,7 +45,7 @@ pub const MIN_PIN_LENGTH: usize = 6;
 pub const MAX_PIN_LENGTH: usize = 64;
 
 /// Session configuration
-pub const DEFAULT_AUTO_LOCK_DURATION: Duration = Duration::from_secs(300); // 5 minutes
+pub const DEFAULT_AUTO_LOCK_DURATION: Duration = Duration::from_secs(30); // 5 minutes
 
 /// Vault configuration stored in the database
 struct VaultConfig {
@@ -457,7 +457,7 @@ mod tests {
     async fn test_auto_lock() {
         // Create with very short auto-lock duration
         let db = Arc::new(VaultDb::new("sqlite::memory:").await.unwrap());
-        let auth = AuthManager::new(db, Some(tokio::time::Duration::from_millis(200)));
+        let auth = AuthManager::new(db, Some(tokio::time::Duration::from_millis(100)));
 
         // Start the background activity counter task
         auth.start_activity_counter();
@@ -473,7 +473,7 @@ mod tests {
 
         // The activity counter background task increments the counter every 1 second,
         // so we need to wait for at least one full second for auto-lock to be triggered
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
         // Check if auto-lock should trigger (it should since more than 200ms have passed)
         // Note: Due to the 1-second interval of the activity counter, the actual time

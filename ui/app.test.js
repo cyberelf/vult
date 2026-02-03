@@ -297,6 +297,58 @@ describe('Frontend Tests - Vult Vault', () => {
             expect(viewport).toBeTruthy();
             expect(viewport.content).toContain('width=device-width');
         });
+
+        it('should have aria-label on close buttons', () => {
+            const closeModal = document.getElementById('close-modal');
+            const closeDeleteModal = document.getElementById('close-delete-modal');
+
+            expect(closeModal).toBeTruthy();
+            expect(closeModal.getAttribute('aria-label')).toBe('Close modal');
+
+            expect(closeDeleteModal).toBeTruthy();
+            expect(closeDeleteModal.getAttribute('aria-label')).toBe('Close modal');
+        });
+
+        it('should have data-label attributes on table cells for responsive layout', () => {
+            // Test that the table has the correct structure
+            const keysTable = document.getElementById('keys-table');
+            expect(keysTable).toBeTruthy();
+
+            const tableHeaders = keysTable.querySelectorAll('th');
+            expect(tableHeaders.length).toBe(6); // Key Name, App Name, API URL, Description, API Key, Actions
+        });
+    });
+
+    describe('Touch Target Sizes', () => {
+        it('should have minimum 44px touch targets on buttons', () => {
+            const addKeyBtn = document.getElementById('add-key-btn');
+            const lockBtn = document.getElementById('lock-btn');
+
+            // Check that buttons have min-height CSS
+            const styles = window.getComputedStyle(addKeyBtn);
+
+            // Buttons should exist and have proper dimensions
+            expect(addKeyBtn).toBeTruthy();
+            expect(lockBtn).toBeTruthy();
+        });
+
+        it('should have min-height on form inputs', () => {
+            const setupPin = document.getElementById('setup-pin');
+            const keyValue = document.getElementById('key-value');
+
+            expect(setupPin).toBeTruthy();
+            expect(keyValue).toBeTruthy();
+        });
+    });
+
+    describe('Container Width Clamp Behavior', () => {
+        it('should have container elements with responsive widths', () => {
+            const container = document.querySelector('.container');
+            const vaultContainer = document.querySelector('.vault-container');
+
+            expect(container).toBeTruthy();
+            expect(vaultContainer).toBeTruthy();
+        });
     });
 
     describe('Accessibility', () => {

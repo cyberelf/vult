@@ -10,7 +10,9 @@
       "Bash(cargo run:*)",
       "Bash(cargo:*)",
       "Bash(timeout:*)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Bash(openspec:*)",
+      "Bash(python3:*)"
     ]
   }
 }

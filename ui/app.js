@@ -185,14 +185,14 @@ function renderKeys() {
             // Render editable row
             return `
                 <tr class="key-row editing" data-id="${key.id}">
-                    <td><input type="text" class="edit-input" data-field="key_name" value="${escapeHtml(key.key_name)}"></td>
-                    <td><input type="text" class="edit-input" data-field="app_name" value="${escapeHtml(key.app_name || '')}" placeholder="Optional"></td>
-                    <td><input type="text" class="edit-input" data-field="api_url" value="${escapeHtml(key.api_url || '')}"></td>
-                    <td><input type="text" class="edit-input" data-field="description" value="${escapeHtml(key.description || '')}"></td>
-                    <td>
+                    <td data-label="Key Name"><input type="text" class="edit-input" data-field="key_name" value="${escapeHtml(key.key_name)}"></td>
+                    <td data-label="App Name"><input type="text" class="edit-input" data-field="app_name" value="${escapeHtml(key.app_name || '')}" placeholder="Optional"></td>
+                    <td data-label="API URL"><input type="text" class="edit-input" data-field="api_url" value="${escapeHtml(key.api_url || '')}"></td>
+                    <td data-label="Description"><input type="text" class="edit-input" data-field="description" value="${escapeHtml(key.description || '')}"></td>
+                    <td data-label="API Key">
                         <input type="password" class="edit-input" data-field="key_value" value="${escapeHtml(keyData[key.id] || '')}" placeholder="Enter new value or leave unchanged">
                     </td>
-                    <td class="actions-cell">
+                    <td class="actions-cell" data-label="Actions">
                         <button class="btn-icon btn-save" title="Save" onclick="saveRow('${key.id}')">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
                         </button>
@@ -206,14 +206,14 @@ function renderKeys() {
             // Render read-only row
             return `
                 <tr class="key-row" data-id="${key.id}">
-                    <td>${escapeHtml(key.key_name)}</td>
-                    <td>${escapeHtml(key.app_name || '-')}</td>
-                    <td>${escapeHtml(key.api_url || '-')}</td>
-                    <td>${escapeHtml(key.description || '-')}</td>
-                    <td>
+                    <td data-label="Key Name">${escapeHtml(key.key_name)}</td>
+                    <td data-label="App Name">${escapeHtml(key.app_name || '-')}</td>
+                    <td data-label="API URL">${escapeHtml(key.api_url || '-')}</td>
+                    <td data-label="Description">${escapeHtml(key.description || '-')}</td>
+                    <td data-label="API Key">
                         <span class="key-value ${isVisible ? '' : 'masked'}" data-id="${key.id}">${escapeHtml(keyValue)}</span>
                     </td>
-                    <td class="actions-cell">
+                    <td class="actions-cell" data-label="Actions">
                         <button class="btn-icon btn-toggle-visibility" title="${isVisible ? 'Hide' : 'Show'}" onclick="toggleVisibility('${key.id}')">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                 ${isVisible
