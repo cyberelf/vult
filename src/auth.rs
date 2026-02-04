@@ -127,7 +127,7 @@ impl AuthManager {
             .map_err(|e| AuthError::Crypto(e.to_string()))?;
 
         // Store PIN hash (simplified - using argon2 hash directly)
-        let salt_hex = hex::encode(&salt);
+        let salt_hex = hex::encode(salt);
         let first_byte = vault_key.as_bytes()[0];
         let pin_hash = format!("${}:{first_byte}", salt_hex);
 
@@ -289,7 +289,7 @@ impl AuthManager {
         let new_vault_key = derive_key_from_pin(new_pin, &new_salt)
             .map_err(|e| AuthError::Crypto(e.to_string()))?;
 
-        let new_salt_hex = hex::encode(&new_salt);
+        let new_salt_hex = hex::encode(new_salt);
         let new_pin_hash = format!("${new_salt_hex}:{}", new_vault_key.as_bytes()[0]);
 
         // Update config

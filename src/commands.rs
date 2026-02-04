@@ -2,9 +2,8 @@
 //!
 //! These commands are called from the frontend.
 
-use crate::auth::{AuthManager, SessionState, validate_pin};
+use crate::auth::{AuthManager, validate_pin};
 use crate::database::{CreateApiKey, UpdateApiKey, VaultDb, ApiKey, ApiKeyWithSecret};
-use crate::crypto::VaultKey;
 use crate::clipboard::ClipboardManager;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

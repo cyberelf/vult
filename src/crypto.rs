@@ -7,7 +7,7 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
 };
 use argon2::{
-    password_hash::{rand_core::OsRng as ArgonOsRng, PasswordHash, PasswordHasher, SaltString},
+    password_hash::{PasswordHasher, SaltString},
     Argon2, Algorithm, Params, Version,
 };
 use rand::RngCore;

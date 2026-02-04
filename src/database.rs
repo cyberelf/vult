@@ -212,7 +212,7 @@ impl VaultDb {
                 // - Re-encrypt all existing keys with per-key encryption
 
                 // Check if api_keys table exists
-                let table_exists = sqlx::query(
+                let _table_exists = sqlx::query(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='api_keys'"
                 )
                 .fetch_optional(&self.pool)
@@ -400,7 +400,7 @@ impl VaultDb {
         .map_err(|e| {
             if e.to_string().contains("UNIQUE constraint failed") {
                 DbError::Duplicate {
-                    app_name: input.app_name.clone().unwrap_or_else(|| String::new()),
+                    app_name: input.app_name.clone().unwrap_or_default(),
                     key_name: input.key_name.clone(),
                 }
             } else {
@@ -730,7 +730,7 @@ impl VaultDb {
         match result {
             Ok(Some(row)) => {
                 let file: Option<String> = row.try_get("file")?;
-                if file.as_deref().map_or(false, |f| f.contains(":memory:")) {
+                if file.as_deref().is_some_and(|f| f.contains(":memory:")) {
                     eprintln!("Skipping backup for in-memory database");
                     return Ok(());
                 }
@@ -762,7 +762,7 @@ impl VaultDb {
             .fetch_all(&self.pool)
             .await?;
 
-        let tables_to_remove = vec!["api_keys_new", "api_keys_v2"];
+        let tables_to_remove = ["api_keys_new", "api_keys_v2"];
 
         for row in rows {
             let table_name: String = row.try_get("name")?;
