@@ -2,7 +2,7 @@
  * Tests for UI Store
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { uiStore, isModalOpen, isKeyModalOpen, isViewKeyModalOpen, isDeleteModalOpen } from '$lib/stores/ui';
 
 describe('UI Store', () => {

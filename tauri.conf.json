@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "frontendDist": "./ui-sveltekit/.svelte-kit/output",
+    "frontendDist": "./ui-sveltekit/build",
     "devUrl": "http://localhost:5173"
   },
   "app": {

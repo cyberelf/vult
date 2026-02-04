@@ -1,4 +1,4 @@
-import { expect, afterEach, vi } from 'vitest';
+import { expect, vi, afterEach } from 'vitest';
 import { cleanup } from '@testing-library/svelte';
 import * as matchers from '@testing-library/jest-dom/matchers';
 
@@ -10,8 +10,25 @@ afterEach(() => {
   cleanup();
 });
 
+// Declare global type for __TAURI__
+declare global {
+  const __TAURI__: {
+    tauri: {
+      invoke: ReturnType<typeof vi.fn>;
+    };
+  };
+
+  interface Window {
+    __TAURI__?: {
+      tauri: {
+        invoke: ReturnType<typeof vi.fn>;
+      };
+    };
+  }
+}
+
 // Mock Tauri API globally
-global.__TAURI__ = {
+(globalThis as any).__TAURI__ = {
   tauri: {
     invoke: vi.fn(),
   },
@@ -26,3 +43,5 @@ Object.defineProperty(window, '__TAURI__', {
   },
   writable: true,
 });
+
+export {};

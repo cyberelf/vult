@@ -15,7 +15,7 @@
 
 <div class="actions-cell flex justify-center items-center gap-2">
   <button
-    class="p-2 rounded hover:bg-primary/20 hover:text-primary text-muted-foreground transition-colors"
+    class="p-3 rounded hover:bg-primary/20 hover:text-primary text-muted-foreground transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
     onclick={() => uiStore.openModal('view', key.id)}
     aria-label="View key"
   >
@@ -23,7 +23,7 @@
   </button>
 
   <button
-    class="p-2 rounded hover:bg-green-500/20 hover:text-green-500 text-muted-foreground transition-colors"
+    class="p-3 rounded hover:bg-green-500/20 hover:text-green-500 text-muted-foreground transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
     onclick={async () => {
       const keyValue = await tauri.copyApiKeyById(key.id);
       await clipboardStore.copy(keyValue, () => Promise.resolve());
@@ -34,7 +34,7 @@
   </button>
 
   <button
-    class="p-2 rounded hover:bg-primary/20 hover:text-primary text-muted-foreground transition-colors"
+    class="p-3 rounded hover:bg-primary/20 hover:text-primary text-muted-foreground transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
     onclick={() => uiStore.openModal('key', key.id)}
     aria-label="Edit key"
   >
@@ -42,7 +42,7 @@
   </button>
 
   <button
-    class="p-2 rounded hover:bg-destructive/20 hover:text-destructive text-muted-foreground transition-colors"
+    class="p-3 rounded hover:bg-destructive/20 hover:text-destructive text-muted-foreground transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
     onclick={() => uiStore.openModal('delete', key.id)}
     aria-label="Delete key"
   >

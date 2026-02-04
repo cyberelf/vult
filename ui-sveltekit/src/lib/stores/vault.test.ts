@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { vaultStore, filteredKeys, isLoading, error, currentScreen } from '$lib/stores/vault';
 import * as tauri from '$lib/services/tauri';
+import type { ApiKey } from '$lib/types';
 
 // Mock Tauri service
 vi.mock('$lib/services/tauri', () => ({
@@ -14,6 +15,19 @@ vi.mock('$lib/services/tauri', () => ({
   listApiKeys: vi.fn(),
   isInitialized: vi.fn(),
 }));
+
+// Helper to create mock ApiKey
+const createMockKey = (overrides?: Partial<ApiKey>): ApiKey => ({
+  id: 1,
+  app_name: 'TestApp',
+  key_name: 'TestKey',
+  api_url: null,
+  description: null,
+  key_value: 'encrypted_value',
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+  ...overrides,
+});
 
 describe('Vault Store', () => {
   beforeEach(() => {
@@ -49,7 +63,7 @@ describe('Vault Store', () => {
 
       await vaultStore.initialize();
 
-      let errorMessage = '';
+      let errorMessage: string | null = '';
       error.subscribe((e) => (errorMessage = e))();
 
       expect(errorMessage).toBe('Database error');
@@ -60,7 +74,7 @@ describe('Vault Store', () => {
     it('should reject PINs shorter than 6 characters', async () => {
       await vaultStore.setupVault('12345', '12345');
 
-      let errorMessage = '';
+      let errorMessage: string | null = '';
       error.subscribe((e) => (errorMessage = e))();
 
       expect(errorMessage).toBe('PIN must be at least 6 characters');
@@ -69,7 +83,7 @@ describe('Vault Store', () => {
     it('should reject mismatched PINs', async () => {
       await vaultStore.setupVault('123456', '654321');
 
-      let errorMessage = '';
+      let errorMessage: string | null = '';
       error.subscribe((e) => (errorMessage = e))();
 
       expect(errorMessage).toBe('PINs do not match');
@@ -88,7 +102,7 @@ describe('Vault Store', () => {
 
   describe('unlock', () => {
     it('should call unlockVault and fetch keys', async () => {
-      const mockKeys = [
+      const mockKeys: ApiKey[] = [
         {
           id: 1,
           app_name: 'GitHub',
@@ -115,7 +129,7 @@ describe('Vault Store', () => {
 
       await vaultStore.unlock('wrong');
 
-      let errorMessage = '';
+      let errorMessage: string | null = '';
       error.subscribe((e) => (errorMessage = e))();
 
       expect(errorMessage).toBe('Invalid PIN');
@@ -148,7 +162,7 @@ describe('Vault Store', () => {
     });
 
     it('should filter keys by search query', async () => {
-      const mockKeys = [
+      const mockKeys: ApiKey[] = [
         {
           id: 1,
           app_name: 'GitHub',
@@ -186,7 +200,7 @@ describe('Vault Store', () => {
     });
 
     it('should be case-insensitive', async () => {
-      const mockKeys = [
+      const mockKeys: ApiKey[] = [
         {
           id: 1,
           app_name: 'GitHub',
@@ -209,7 +223,7 @@ describe('Vault Store', () => {
     });
 
     it('should search across app_name, key_name, and description', async () => {
-      const mockKeys = [
+      const mockKeys: ApiKey[] = [
         {
           id: 1,
           app_name: 'API Service',
@@ -243,7 +257,7 @@ describe('Vault Store', () => {
       // Clear it
       vaultStore.clearError();
 
-      let errorMessage = '';
+      let errorMessage: string | null = '';
       error.subscribe((e) => (errorMessage = e))();
 
       expect(errorMessage).toBeNull();
@@ -265,7 +279,7 @@ describe('Vault Store', () => {
 
       vaultStore.addKey(mockKey);
 
-      let keys: typeof mockKey[] = [];
+      let keys: ApiKey[] = [];
       vaultStore.subscribe((s) => (keys = s.keys))();
 
       expect(keys).toHaveLength(1);
@@ -294,7 +308,7 @@ describe('Vault Store', () => {
       vaultStore.addKey(originalKey);
       vaultStore.updateKey(updatedKey);
 
-      let keys: typeof originalKey[] = [];
+      let keys: ApiKey[] = [];
       vaultStore.subscribe((s) => (keys = s.keys))();
 
       expect(keys).toHaveLength(1);
@@ -318,7 +332,7 @@ describe('Vault Store', () => {
       vaultStore.addKey(mockKey);
       vaultStore.removeKey(1);
 
-      let keys: typeof mockKey[] = [];
+      let keys: ApiKey[] = [];
       vaultStore.subscribe((s) => (keys = s.keys))();
 
       expect(keys).toHaveLength(0);
@@ -327,7 +341,9 @@ describe('Vault Store', () => {
 
   describe('isLoading derived store', () => {
     it('should reflect loading state', async () => {
-      vi.mocked(tauri.isInitialized).mockResolvedValue(new Promise(() => {}));
+      // Create a never-resolving promise to keep loading state
+      const neverResolving = new Promise<boolean>(() => {});
+      vi.mocked(tauri.isInitialized).mockReturnValue(neverResolving);
 
       const initPromise = vaultStore.initialize();
 
@@ -352,11 +368,11 @@ describe('Vault Store', () => {
       const state = vaultStore.getCurrentState();
 
       expect(state).not.toBeNull();
-      expect(state.searchQuery).toBe('test');
+      expect(state?.searchQuery).toBe('test');
     });
 
     it('should return isUnlocked flag correctly', async () => {
-      const mockKeys = [
+      const mockKeys: ApiKey[] = [
         {
           id: 1,
           app_name: 'GitHub',
@@ -376,14 +392,14 @@ describe('Vault Store', () => {
 
       const state = vaultStore.getCurrentState();
 
-      expect(state.isUnlocked).toBe(true);
+      expect(state?.isUnlocked).toBe(true);
     });
 
     it('should return empty keys array when locked', () => {
       const state = vaultStore.getCurrentState();
 
-      expect(state.keys).toEqual([]);
-      expect(state.isUnlocked).toBe(false);
+      expect(state?.keys).toEqual([]);
+      expect(state?.isUnlocked).toBe(false);
     });
 
     it('should return correct screen state', async () => {
@@ -393,13 +409,13 @@ describe('Vault Store', () => {
 
       const state = vaultStore.getCurrentState();
 
-      expect(state.screen).toBe('unlock');
+      expect(state?.screen).toBe('unlock');
     });
   });
 
   describe('camelCase conversion from listApiKeys', () => {
     it('should handle keys with null optional fields', async () => {
-      const mockKeys = [
+      const mockKeys: ApiKey[] = [
         {
           id: 1,
           app_name: 'Service',
@@ -434,7 +450,7 @@ describe('Vault Store', () => {
     });
 
     it('should handle keys with all fields present', async () => {
-      const mockKeys = [
+      const mockKeys: ApiKey[] = [
         {
           id: 1,
           app_name: 'GitHub',
@@ -482,7 +498,7 @@ describe('Vault Store', () => {
 
       await vaultStore.setupVault('test123', 'test123');
 
-      let errorMessage = '';
+      let errorMessage: string | null = '';
       error.subscribe((e) => (errorMessage = e))();
 
       expect(errorMessage).toBe('Database error');

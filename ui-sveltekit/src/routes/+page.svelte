@@ -3,15 +3,22 @@
   import UnlockScreen from '$lib/components/auth/UnlockScreen.svelte';
   import VaultScreen from '$lib/components/vault/VaultScreen.svelte';
   import { currentScreen } from '$lib/stores/vault';
+  import { fade } from 'svelte/transition';
 </script>
 
 <main class="screen min-h-screen flex items-center justify-center">
   {#if $currentScreen === 'setup'}
-    <SetupScreen />
+    <div transition:fade={{ duration: 200 }}>
+      <SetupScreen />
+    </div>
   {:else if $currentScreen === 'unlock'}
-    <UnlockScreen />
+    <div transition:fade={{ duration: 200 }}>
+      <UnlockScreen />
+    </div>
   {:else if $currentScreen === 'vault'}
-    <VaultScreen />
+    <div transition:fade={{ duration: 200 }}>
+      <VaultScreen />
+    </div>
   {/if}
 </main>
 

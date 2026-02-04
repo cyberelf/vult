@@ -392,7 +392,6 @@ describe('Tauri Service Layer', () => {
     });
 
     it('should return false when __TAURI__ does not exist', () => {
-      // @ts-expect-error - testing without __TAURI__
       delete window.__TAURI__;
 
       expect(isTauriAvailable()).toBe(false);

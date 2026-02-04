@@ -32,7 +32,7 @@ function updateActivity() {
     try {
       // Only update activity if vault is unlocked
       const state = vaultStore.getCurrentState();
-      if (state.isUnlocked) {
+      if (state !== null && state.isUnlocked) {
         await tauri.updateActivity();
       }
     } catch (error) {

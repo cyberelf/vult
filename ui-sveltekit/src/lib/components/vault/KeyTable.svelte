@@ -15,6 +15,9 @@
           App Name
         </th>
         <th class="p-4 text-left text-sm font-semibold text-muted-foreground uppercase">
+          API Key
+        </th>
+        <th class="p-4 text-left text-sm font-semibold text-muted-foreground uppercase">
           API URL
         </th>
         <th class="p-4 text-left text-sm font-semibold text-muted-foreground uppercase">
@@ -28,10 +31,15 @@
     <tbody>
       {#each $filteredKeys as key (key.id)}
         <tr class="border-b hover:bg-muted/50">
-          <td class="p-4 font-medium">{key.key_name}</td>
-          <td class="p-4">{key.app_name}</td>
+          <td class="p-4 font-medium">{key.keyName}</td>
+          <td class="p-4">{key.appName}</td>
+          <td class="p-4">
+            <code class="text-sm text-muted-foreground font-mono">
+              {'•'.repeat(Math.min(key.keyValue?.length || 8, 12))}
+            </code>
+          </td>
           <td class="p-4 text-sm text-muted-foreground">
-            {key.api_url || '-'}
+            {key.apiUrl || '-'}
           </td>
           <td class="p-4 text-sm text-muted-foreground">
             {key.description || '-'}
@@ -50,15 +58,21 @@
       <div class="bg-card border rounded-lg p-4 space-y-3">
         <div class="flex justify-between items-start">
           <div>
-            <h4 class="font-semibold">{key.key_name}</h4>
-            <p class="text-sm text-muted-foreground">{key.app_name}</p>
+            <h4 class="font-semibold">{key.keyName}</h4>
+            <p class="text-sm text-muted-foreground">{key.appName}</p>
           </div>
           <KeyActions {key} />
         </div>
-        {#if key.api_url}
+        <div>
+          <span class="text-xs text-muted-foreground">API Key:</span>
+          <p class="text-sm font-mono text-muted-foreground">
+            {'•'.repeat(Math.min(key.keyValue?.length || 8, 12))}
+          </p>
+        </div>
+        {#if key.apiUrl}
           <div>
             <span class="text-xs text-muted-foreground">API URL:</span>
-            <p class="text-sm">{key.api_url}</p>
+            <p class="text-sm">{key.apiUrl}</p>
           </div>
         {/if}
         {#if key.description}

@@ -191,12 +191,12 @@ function createVaultStore() {
      * Get current state snapshot
      * Useful for external services that need to check state
      */
-    getCurrentState: () => {
+    getCurrentState: (): VaultState | null => {
       let state: VaultState | null = null;
-      const unsub = subscribe((s) => {
+      const unsubscribe = subscribe((s) => {
         state = s;
       });
-      unsub();
+      unsubscribe();
       return state;
     },
   };

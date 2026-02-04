@@ -21,24 +21,40 @@ export interface CommandResponse<T> {
   error: string | null;
 }
 
-export interface ApiKey {
+/**
+ * Represents an API key stored in the vault.
+ * Matches the Rust ApiKey struct from src/commands.rs
+ * Includes both snake_case (from Rust) and camelCase (for frontend) properties
+ */
 export interface ApiKey {
   /** Unique identifier for the key */
   id: number;
-  /** Application name (e.g., "GitHub") */
+  /** Application name (e.g., "GitHub") - Rust format */
   app_name: string;
-  /** Display name for the key (e.g., "Personal Access Token") */
+  /** Application name - Frontend format */
+  appName?: string;
+  /** Display name for the key (e.g., "Personal Access Token") - Rust format */
   key_name: string;
-  /** Optional API endpoint URL */
+  /** Display name for the key - Frontend format */
+  keyName?: string;
+  /** Optional API endpoint URL - Rust format */
   api_url: string | null;
+  /** Optional API endpoint URL - Frontend format */
+  apiUrl?: string | null;
   /** Optional description of the key's purpose */
   description: string | null;
-  /** The encrypted API key value */
+  /** The encrypted API key value - Rust format */
   key_value: string;
-  /** ISO 8601 timestamp when key was created */
+  /** The encrypted API key value - Frontend format */
+  keyValue?: string;
+  /** ISO 8601 timestamp when key was created - Rust format */
   created_at: string;
-  /** ISO 8601 timestamp when key was last updated */
+  /** ISO 8601 timestamp when key was created - Frontend format */
+  createdAt?: string;
+  /** ISO 8601 timestamp when key was last updated - Rust format */
   updated_at: string;
+  /** ISO 8601 timestamp when key was last updated - Frontend format */
+  updatedAt?: string;
 }
 
 /**
@@ -132,8 +148,9 @@ export type TauriError =
 
 /**
  * Union type for all Tauri command results.
+ * Represents either a successful operation or a typed error.
  */
-export type CommandResult<T> = Result<T, TauriError>;
+export type CommandResult<T> = { success: true; data: T } | { success: false; error: TauriError };
 
 /**
  * Screen states for UI routing.

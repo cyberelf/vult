@@ -22,7 +22,9 @@
       "Bash(npm test:*)",
       "Bash(npx svelte-check:*)",
       "Bash(cmd:*)",
-      "Bash(./test-all.bat:*)"
+      "Bash(./test-all.bat:*)",
+      "Bash(npx tsc:*)",
+      "Bash(echo:*)"
     ]
   }
 }

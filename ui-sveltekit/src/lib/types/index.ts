@@ -14,6 +14,7 @@ export type {
   UpdateApiKeyArgs,
   ListApiKeysResult,
   IsInitializedResult,
+  CommandResponse,
   TauriError,
   CommandResult,
   ScreenState,
