@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **BREAKING**: Migrated frontend from vanilla JavaScript to SvelteKit
+- UI now uses Svelte 5 with Runes ($state, $props, $derived)
+- TypeScript strict mode enabled for type safety
+- Tailwind CSS v4 with new `@import` and `@theme` syntax
+- Replaced custom components with shadcn-svelte components
+- Vite build system for faster development and optimized production builds
+
+### Added
+- SvelteKit SPA mode (SSR disabled for desktop app)
+- Comprehensive TypeScript type definitions for all API types
+- Type-safe Tauri command wrappers
+- Svelte stores for global state management (vault, ui, clipboard)
+- Toast notification system for user feedback
+- Activity tracking service for auto-lock functionality
+- Vitest testing framework with 55 passing tests
+- Responsive design improvements with proper mobile support
+
+### Removed
+- Old vanilla JS implementation in `ui/` directory
+
 ## [0.1.0] - 2026-02-02
 
 ### Added

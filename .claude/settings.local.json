@@ -12,7 +12,17 @@
       "Bash(timeout:*)",
       "Bash(sqlite3:*)",
       "Bash(openspec:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(npm create:*)",
+      "Bash(npx sv create:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run test)",
+      "Bash(npm test:*)",
+      "Bash(npx svelte-check:*)",
+      "Bash(cmd:*)",
+      "Bash(./test-all.bat:*)"
     ]
   }
 }

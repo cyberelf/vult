@@ -2,92 +2,92 @@
 
 ## 1. Project Setup
 
-- [ ] 1.1 Initialize SvelteKit project in `ui-sveltekit/` directory
-- [ ] 1.2 Configure SvelteKit for SPA mode (disable SSR)
-- [ ] 1.3 Install Tailwind CSS and configure with custom breakpoints
-- [ ] 1.4 Install shadcn-svelte and run init command
-- [ ] 1.5 Install required shadcn components: button, input, label, textarea, dialog, table
-- [ ] 1.6 Install @tauri-apps/api package for Tauri integration
-- [ ] 1.7 Configure TypeScript strict mode in tsconfig.json
-- [ ] 1.8 Update Tauri config (tauri.conf.json) to point to SvelteKit build output
-- [ ] 1.9 Update Tauri devUrl to point to Vite dev server (localhost:5173)
+- [x] 1.1 Initialize SvelteKit project in `ui-sveltekit/` directory
+- [x] 1.2 Configure SvelteKit for SPA mode (disable SSR)
+- [x] 1.3 Install Tailwind CSS and configure with custom breakpoints
+- [x] 1.4 Install shadcn-svelte and run init command
+- [x] 1.5 Install required shadcn components: button, input, label, textarea, dialog, table
+- [x] 1.6 Install @tauri-apps/api package for Tauri integration
+- [x] 1.7 Configure TypeScript strict mode in tsconfig.json
+- [x] 1.8 Update Tauri config (tauri.conf.json) to point to SvelteKit build output
+- [x] 1.9 Update Tauri devUrl to point to Vite dev server (localhost:5173)
 - [ ] 1.10 Test that `cargo tauri dev` launches with SvelteKit frontend
 
 ## 2. Type Definitions
 
-- [ ] 2.1 Create `src/lib/types/api.ts` with ApiKey interface (matching Rust struct)
-- [ ] 2.2 Create SessionState interface in api.ts
-- [ ] 2.3 Create InitVaultArgs interface
-- [ ] 2.4 Create UnlockVaultArgs interface
-- [ ] 2.5 Create ChangePinArgs interface
-- [ ] 2.6 Create CreateApiKeyArgs interface
-- [ ] 2.7 Create UpdateApiKeyArgs interface
-- [ ] 2.8 Create barrel export `src/lib/types/index.ts` re-exporting all types
-- [ ] 2.9 Add JSDoc comments to all type definitions
+- [x] 2.1 Create `src/lib/types/api.ts` with ApiKey interface (matching Rust struct)
+- [x] 2.2 Create SessionState interface in api.ts
+- [x] 2.3 Create InitVaultArgs interface
+- [x] 2.4 Create UnlockVaultArgs interface
+- [x] 2.5 Create ChangePinArgs interface
+- [x] 2.6 Create CreateApiKeyArgs interface
+- [x] 2.7 Create UpdateApiKeyArgs interface
+- [x] 2.8 Create barrel export `src/lib/types/index.ts` re-exporting all types
+- [x] 2.9 Add JSDoc comments to all type definitions
 - [ ] 2.10 Verify TypeScript compiles with no errors
 
 ## 3. Tauri Service Layer
 
-- [ ] 3.1 Create `src/lib/services/tauri.ts` service file
-- [ ] 3.2 Implement initVault wrapper function
-- [ ] 3.3 Implement unlockVault wrapper function
-- [ ] 3.4 Implement lockVault wrapper function
-- [ ] 3.5 Implement listApiKeys wrapper function
-- [ ] 3.6 Implement createApiKey wrapper function
-- [ ] 3.7 Implement updateApiKey wrapper function
-- [ ] 3.8 Implement deleteApiKey wrapper function
-- [ ] 3.9 Implement changePin wrapper function
-- [ ] 3.10 Implement getSessionState wrapper function
-- [ ] 3.11 Implement isInitialized wrapper function
-- [ ] 3.12 Implement copyToClipboard wrapper function
-- [ ] 3.13 Add try-catch error handling to all wrapper functions
-- [ ] 3.14 Add JSDoc comments to all wrapper functions
+- [x] 3.1 Create `src/lib/services/tauri.ts` service file
+- [x] 3.2 Implement initVault wrapper function
+- [x] 3.3 Implement unlockVault wrapper function
+- [x] 3.4 Implement lockVault wrapper function
+- [x] 3.5 Implement listApiKeys wrapper function
+- [x] 3.6 Implement createApiKey wrapper function
+- [x] 3.7 Implement updateApiKey wrapper function
+- [x] 3.8 Implement deleteApiKey wrapper function
+- [x] 3.9 Implement changePin wrapper function
+- [x] 3.10 Implement getSessionState wrapper function
+- [x] 3.11 Implement isInitialized wrapper function
+- [x] 3.12 Implement copyToClipboard wrapper function
+- [x] 3.13 Add try-catch error handling to all wrapper functions
+- [x] 3.14 Add JSDoc comments to all wrapper functions
 - [ ] 3.15 Test wrapper functions compile correctly
 
 ## 4. State Management (Stores)
 
-- [ ] 4.1 Create `src/lib/stores/vault.ts` store file
-- [ ] 4.2 Define VaultState interface with screen, isUnlocked, keys, searchQuery, loading, error
-- [ ] 4.3 Implement vaultState writable store with initial state
-- [ ] 4.4 Implement initialize action that checks if vault is initialized
-- [ ] 4.5 Implement unlock action that calls unlockVault and fetches keys
-- [ ] 4.6 Implement lock action that calls lockVault and resets state
-- [ ] 4.7 Implement initialize action for setup screen (init_vault command)
-- [ ] 4.8 Implement setSearchQuery action for search filtering
-- [ ] 4.9 Implement derived store filteredKeys that filters by searchQuery
-- [ ] 4.10 Add error handling to all async actions
-- [ ] 4.11 Create `src/lib/stores/ui.ts` store file
-- [ ] 4.12 Implement uiState store with modal visibility, loading, error state
-- [ ] 4.13 Create `src/lib/stores/clipboard.ts` store file
-- [ ] 4.14 Implement clipboardStore with copiedKey, copiedAt, auto-clear logic
+- [x] 4.1 Create `src/lib/stores/vault.ts` store file
+- [x] 4.2 Define VaultState interface with screen, isUnlocked, keys, searchQuery, loading, error
+- [x] 4.3 Implement vaultState writable store with initial state
+- [x] 4.4 Implement initialize action that checks if vault is initialized
+- [x] 4.5 Implement unlock action that calls unlockVault and fetches keys
+- [x] 4.6 Implement lock action that calls lockVault and resets state
+- [x] 4.7 Implement initialize action for setup screen (init_vault command)
+- [x] 4.8 Implement setSearchQuery action for search filtering
+- [x] 4.9 Implement derived store filteredKeys that filters by searchQuery
+- [x] 4.10 Add error handling to all async actions
+- [x] 4.11 Create `src/lib/stores/ui.ts` store file
+- [x] 4.12 Implement uiState store with modal visibility, loading, error state
+- [x] 4.13 Create `src/lib/stores/clipboard.ts` store file
+- [x] 4.14 Implement clipboardStore with copiedKey, copiedAt, auto-clear logic
 - [ ] 4.15 Test store reactivity with Svelte 5 runes
 
 ## 5. Root Layout and Base Styles
 
-- [ ] 5.1 Create `src/routes/+layout.svelte` root layout
-- [ ] 5.2 Add dark mode provider to layout
-- [ ] 5.3 Configure shadcn-svelte theming with CSS variables
-- [ ] 5.4 Create `src/lib/css/app.css` with Tailwind imports
-- [ ] 5.5 Add custom CSS variables for colors (primary, danger, background, text)
-- [ ] 5.6 Configure Tailwind breakpoints (sm: 320px, md: 768px, lg: 1024px)
-- [ ] 5.7 Add base styles and global reset
+- [x] 5.1 Create `src/routes/+layout.svelte` root layout
+- [x] 5.2 Add dark mode provider to layout
+- [x] 5.3 Configure shadcn-svelte theming with CSS variables
+- [x] 5.4 Create `src/lib/css/app.css` with Tailwind imports
+- [x] 5.5 Add custom CSS variables for colors (primary, danger, background, text)
+- [x] 5.6 Configure Tailwind breakpoints (sm: 320px, md: 768px, lg: 1024px)
+- [x] 5.7 Add base styles and global reset
 - [ ] 5.8 Add toast notification container to layout
-- [ ] 5.9 Create `src/routes/+page.svelte` main page component
+- [x] 5.9 Create `src/routes/+page.svelte` main page component
 
 ## 6. Authentication Screens
 
-- [ ] 6.1 Create `src/lib/components/auth/SetupScreen.svelte`
-- [ ] 6.2 Add setup form with PIN and PIN confirmation fields
-- [ ] 6.3 Implement form validation (minlength 6, PINs match)
-- [ ] 6.4 Connect form submit to vaultState.initialize action
-- [ ] 6.5 Add error message display
-- [ ] 6.6 Style form with shadcn Input, Label, Button components
-- [ ] 6.7 Create `src/lib/components/auth/UnlockScreen.svelte`
-- [ ] 6.8 Add unlock form with PIN field
-- [ ] 6.9 Implement form submit to vaultState.unlock action
-- [ ] 6.10 Add error message display for invalid PIN
-- [ ] 6.11 Add loading state during unlock
-- [ ] 6.12 Style unlock screen with shadcn components
+- [x] 6.1 Create `src/lib/components/auth/SetupScreen.svelte`
+- [x] 6.2 Add setup form with PIN and PIN confirmation fields
+- [x] 6.3 Implement form validation (minlength 6, PINs match)
+- [x] 6.4 Connect form submit to vaultState.initialize action
+- [x] 6.5 Add error message display
+- [x] 6.6 Style form with shadcn Input, Label, Button components
+- [x] 6.7 Create `src/lib/components/auth/UnlockScreen.svelte`
+- [x] 6.8 Add unlock form with PIN field
+- [x] 6.9 Implement form submit to vaultState.unlock action
+- [x] 6.10 Add error message display for invalid PIN
+- [x] 6.11 Add loading state during unlock
+- [x] 6.12 Style unlock screen with shadcn components
 - [ ] 6.13 Test setup and unlock flows end-to-end
 
 ## 7. Vault Screen Components
@@ -140,8 +140,8 @@
 
 ## 9. Screen Routing Logic
 
-- [ ] 9.1 Update `src/routes/+page.svelte` with conditional rendering
-- [ ] 9.2 Implement screen switching based on vaultState.screen value
+- [x] 9.1 Update `src/routes/+page.svelte` with conditional rendering
+- [x] 9.2 Implement screen switching based on vaultState.screen value
 - [ ] 9.3 Add transitions between screens (fade or slide)
 - [ ] 9.4 Test setup → unlock → vault flow
 - [ ] 9.5 Test vault → unlock (lock) flow

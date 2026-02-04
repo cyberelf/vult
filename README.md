@@ -77,7 +77,7 @@ Vult features a fully responsive, autoscaling UI that adapts to any window size.
 
 ### Prerequisites
 - Rust 1.80 or later
-- Node.js 18+ and pnpm (for UI development)
+- Node.js 18+ and npm (for UI development)
 - System dependencies:
   - **Windows**: WebView2 Runtime (usually pre-installed)
   - **macOS**: Xcode Command Line Tools
@@ -140,22 +140,62 @@ vult/
 │   ├── crypto.rs          # Cryptographic operations
 │   ├── database.rs        # Database operations & migrations
 │   └── clipboard.rs       # Clipboard management
-├── ui/                     # Frontend UI
-│   ├── index.html         # Main HTML
-│   ├── app.js             # Application logic
-│   └── styles.css         # Styling
+├── ui-sveltekit/          # Frontend UI (SvelteKit + TypeScript)
+│   ├── src/
+│   │   ├── routes/       # SvelteKit routes (+layout.svelte, +page.svelte)
+│   │   ├── lib/
+│   │   │   ├── components/  # Svelte components
+│   │   │   │   ├── auth/    # Authentication screens
+│   │   │   │   ├── vault/   # Vault management screens
+│   │   │   │   ├── modals/  # Modal components
+│   │   │   │   └── ui/      # shadcn-svelte components
+│   │   │   ├── stores/      # Svelte stores (vault, ui, clipboard)
+│   │   │   ├── services/    # Tauri API wrappers, activity tracking
+│   │   │   ├── types/       # TypeScript type definitions
+│   │   │   └── css/         # Tailwind CSS v4 with @theme
+│   │   └── tests/           # Vitest tests
+│   ├── vite.config.ts
+│   └── svelte.config.js
 └── capabilities/          # Tauri capabilities
 ```
 
+### Frontend Architecture
+
+The frontend uses **SvelteKit** (Svelte 5) with:
+
+- **Svelte 5 Runes**: `$state()`, `$props()`, `$derived()` for reactivity
+- **TypeScript**: Strict mode for type safety
+- **Svelte Stores**: For global state management
+- **Tailwind CSS v4**: With custom `@theme` configuration
+- **shadcn-svelte**: Copy-paste component library
+- **Vitest**: Testing framework with jsdom environment
+
 ### Running Tests
+
 ```bash
-# Run all tests
+# Run Rust tests
 cargo test
 
 # Run specific module tests
 cargo test --lib database
 cargo test --lib crypto
 cargo test --lib auth
+
+# Run frontend tests (from ui-sveltekit directory)
+cd ui-sveltekit
+npm test              # Run all tests
+npm run test:watch    # Watch mode
+```
+
+### Building the Frontend
+
+```bash
+# Build SvelteKit frontend (from ui-sveltekit directory)
+cd ui-sveltekit
+npm run build
+
+# Build Tauri app with SvelteKit frontend
+cargo tauri build
 ```
 
 ### Database Migrations
@@ -215,6 +255,10 @@ Vult does NOT protect against:
 
 Built with:
 - [Tauri](https://tauri.app/) - Cross-platform desktop framework
+- [SvelteKit](https://kit.svelte.dev/) - Web framework
+- [Svelte 5](https://svelte.dev/) - Reactive UI library
+- [Tailwind CSS v4](https://tailwindcss.com/) - Utility-first CSS framework
+- [shadcn-svelte](https://www.shadcn-svelte.com/) - Component library
 - [SQLite](https://www.sqlite.org/) - Embedded database
 - [Argon2](https://argon2-cffi.readthedocs.io/) - Password hashing
 - [AES-GCM](https://github.com/RustCrypto/AEADs) - Authenticated encryption

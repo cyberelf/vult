@@ -93,6 +93,14 @@ pub async fn get_auth_state(
     }))
 }
 
+/// Checks if the vault has been initialized
+#[tauri::command]
+pub async fn is_initialized(
+    auth_manager: tauri::State<'_, Arc<AuthManager>>,
+) -> Result<bool, String> {
+    auth_manager.is_initialized().await.map_err(|e| e.to_string())
+}
+
 /// Changes the PIN
 #[tauri::command]
 pub async fn change_pin(

@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "identifier": "com.vult.app",
   "build": {
-    "beforeDevCommand": "",
-    "beforeBuildCommand": "",
-    "frontendDist": "ui",
-    "devUrl": "http://localhost:1420"
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "./ui-sveltekit/.svelte-kit/output",
+    "devUrl": "http://localhost:5173"
   },
   "app": {
     "withGlobalTauri": true,

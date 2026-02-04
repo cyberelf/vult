@@ -79,6 +79,7 @@ async fn main() {
             commands::unlock_vault,
             commands::lock_vault,
             commands::get_auth_state,
+            commands::is_initialized,
             commands::change_pin,
             commands::create_api_key,
             commands::get_api_key,
