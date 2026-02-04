@@ -45,7 +45,7 @@
 
     <!-- Modal -->
     <div
-      class="relative bg-card rounded-lg shadow-lg w-full max-w-[400px] p-6"
+      class="relative bg-background-surface rounded-lg shadow-lg w-full max-w-[400px] p-6 border border-border"
       role="alertdialog"
       aria-labelledby="delete-modal-title"
       aria-describedby="delete-modal-description"

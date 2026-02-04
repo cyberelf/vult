@@ -181,6 +181,37 @@ function createVaultStore() {
     },
 
     /**
+     * Persist key updates to backend and update store
+     */
+    saveKey: async (key: Partial<ApiKey> & { id: number }) => {
+       update((s) => ({ ...s, loading: true, error: null }));
+       try {
+         const result = await tauri.updateApiKey({
+           id: key.id,
+           appName: key.appName,
+           keyName: key.keyName,
+           // Do not send keyValue unless explicitly changing it (not supported in inline edit)
+           apiUrl: key.apiUrl || undefined, // undefined sends 'ignore' or 'null' depending on tauri.ts logic
+           description: key.description || undefined,
+         });
+         
+         // Update local state with the returned (fresh) key
+         update((s) => ({
+           ...s,
+           keys: s.keys.map((k) => (k.id === key.id ? { ...k, ...result } : k)),
+           loading: false
+         }));
+       } catch (error) {
+         update((s) => ({
+           ...s,
+           loading: false,
+           error: error instanceof Error ? error.message : 'Failed to update key',
+         }));
+         throw error;
+       }
+    },
+
+    /**
      * Remove a key from the store
      */
     removeKey: (id: number) => {

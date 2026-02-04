@@ -11,16 +11,18 @@
   import KeyModal from '$lib/components/modals/KeyModal.svelte';
   import ViewKeyModal from '$lib/components/modals/ViewKeyModal.svelte';
   import DeleteModal from '$lib/components/modals/DeleteModal.svelte';
+  import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 </script>
 
-<div class="vault-container container max-w-[1200px] mx-auto px-4 py-8">
+<div class="vault-container container max-w-[1200px] mx-auto px-4 py-8 space-y-6">
   <!-- Header -->
-  <header class="flex justify-between items-center mb-8">
+  <header class="flex justify-between items-center">
     <div>
       <h1 class="text-3xl font-bold">API Keys</h1>
       <p class="text-muted-foreground">Manage your encrypted API keys</p>
     </div>
-    <div class="flex gap-3">
+    <div class="flex gap-3 items-center">
+      <ThemeToggle />
       <Button
         variant="primary"
         onclick={() => uiStore.openModal('key', null)}

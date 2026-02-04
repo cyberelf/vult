@@ -8,15 +8,15 @@
 
 <main class="screen min-h-screen flex items-center justify-center">
   {#if $currentScreen === 'setup'}
-    <div transition:fade={{ duration: 200 }}>
+    <div transition:fade={{ duration: 100 }}>
       <SetupScreen />
     </div>
   {:else if $currentScreen === 'unlock'}
-    <div transition:fade={{ duration: 200 }}>
+    <div transition:fade={{ duration: 100 }}>
       <UnlockScreen />
     </div>
   {:else if $currentScreen === 'vault'}
-    <div transition:fade={{ duration: 200 }}>
+    <div transition:fade={{ duration: 100 }} class="w-full">
       <VaultScreen />
     </div>
   {/if}

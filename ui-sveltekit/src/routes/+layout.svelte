@@ -3,16 +3,19 @@
   import favicon from '$lib/assets/favicon.svg';
   import { onMount, onDestroy } from 'svelte';
   import { vaultStore } from '$lib/stores/vault';
+  import { themeStore } from '$lib/stores/theme';
   import Toast from '$lib/components/ui/toast/Toast.svelte';
   import { activityTracker } from '$lib/services/activity';
 
   let { children } = $props();
 
-  // Initialize vault state on app load
+  // Initialize vault state and theme on app load
   onMount(async () => {
     await vaultStore.initialize();
     // Initialize activity tracking after vault initialization
     await activityTracker.init();
+    // Initialize theme
+    themeStore.init();
   });
 
   // Cleanup activity tracking on app unmount
@@ -28,8 +31,10 @@
   <title>Vult - Secure API Key Vault</title>
 </svelte:head>
 
-<div class="min-h-screen bg-background text-foreground">
-  {@render children()}
+<div class="h-screen w-full bg-background text-foreground grid grid-rows-[minmax(0,1fr)] overflow-hidden font-sans antialiased">
+  <div class="overflow-auto w-full h-full">
+    {@render children()}
+  </div>
   <Toast />
 </div>
 

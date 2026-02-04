@@ -41,7 +41,7 @@
 
     <!-- Modal -->
     <div
-      class="relative bg-card rounded-lg shadow-lg w-full max-w-[500px"
+      class="relative bg-background-surface rounded-lg shadow-lg w-full max-w-[500px] border border-border"
       role="dialog"
       aria-labelledby="view-modal-title"
       tabindex="-1"

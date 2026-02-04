@@ -118,9 +118,19 @@ export interface CreateApiKeyArgs {
  * Arguments for updating an existing API key.
  * Used with update_api_key Tauri command.
  */
-export interface UpdateApiKeyArgs extends CreateApiKeyArgs {
+export interface UpdateApiKeyArgs {
   /** The ID of the key to update */
   id: number;
+  /** Optional application name (e.g., "GitHub") */
+  appName?: string;
+  /** Optional display name for the key */
+  keyName?: string;
+  /** Optional plaintext API key value to encrypt and store */
+  keyValue?: string;
+  /** Optional API endpoint URL */
+  apiUrl?: string;
+  /** Optional description of the key's purpose */
+  description?: string;
 }
 
 /**

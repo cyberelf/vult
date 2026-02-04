@@ -8,43 +8,48 @@
 
   interface Props {
     key: ApiKey;
+    onToggleExpand?: () => void;
   }
 
-  let { key }: Props = $props();
+  let { key, onToggleExpand }: Props = $props();
 </script>
 
-<div class="actions-cell flex justify-center items-center gap-2">
+<div class="actions-cell flex justify-center items-center gap-1">
   <button
-    class="p-3 rounded hover:bg-primary/20 hover:text-primary text-muted-foreground transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-    onclick={() => uiStore.openModal('view', key.id)}
-    aria-label="View key"
+    class="p-2 rounded-md hover:bg-background-elevated hover:text-primary text-foreground-secondary transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
+    onclick={onToggleExpand}
+    aria-label="View key details"
+    title="View details"
   >
     <Eye class="w-4 h-4" />
   </button>
 
   <button
-    class="p-3 rounded hover:bg-green-500/20 hover:text-green-500 text-muted-foreground transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+    class="p-2 rounded-md hover:bg-background-elevated hover:text-green-500 text-foreground-secondary transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
     onclick={async () => {
       const keyValue = await tauri.copyApiKeyById(key.id);
       await clipboardStore.copy(keyValue, () => Promise.resolve());
     }}
     aria-label="Copy key"
+    title="Copy to clipboard"
   >
     <Copy class="w-4 h-4" />
   </button>
 
   <button
-    class="p-3 rounded hover:bg-primary/20 hover:text-primary text-muted-foreground transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+    class="p-2 rounded-md hover:bg-background-elevated hover:text-primary text-foreground-secondary transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
     onclick={() => uiStore.openModal('key', key.id)}
     aria-label="Edit key"
+    title="Edit key"
   >
     <Pencil class="w-4 h-4" />
   </button>
 
   <button
-    class="p-3 rounded hover:bg-destructive/20 hover:text-destructive text-muted-foreground transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+    class="p-2 rounded-md hover:bg-background-elevated hover:text-danger text-foreground-secondary transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
     onclick={() => uiStore.openModal('delete', key.id)}
     aria-label="Delete key"
+    title="Delete key"
   >
     <Trash2 class="w-4 h-4" />
   </button>

@@ -163,13 +163,41 @@ export async function createApiKey(args: CreateApiKeyArgs): Promise<ApiKey> {
  */
 export async function updateApiKey(args: UpdateApiKeyArgs): Promise<ApiKey> {
   try {
+    // Construct the input object matching the Rust UpdateApiKey struct
+    const input = {
+      id: String(args.id),
+      app_name: args.appName || null,
+      key_name: args.keyName || null,
+      key_value: args.keyValue || null, // Optional, only if re-keying
+      api_url: args.apiUrl ? args.apiUrl : args.apiUrl === '' ? null : undefined, // Handle empty strings as null? Rust Option<Option<String>> vs Option<String>
+      description: args.description ? args.description : args.description === '' ? null : undefined,
+    };
+    
+    // Rust UpdateApiKey:
+    // pub api_url: Option<Option<String>>
+    // This allows: None (no change), Some(None) (clear), Some(Some("...")) (set)
+    // My construction above:
+    // If args.apiUrl is undefined -> api_url: undefined (omitted) -> None?
+    // In JS object, undefined keys are omitted. 
+    // However, if I want to set it, I need `api_url: Some(...)`.
+    // The frontend args are simplified.
+    // Logic:
+    // If `args.apiUrl` is passed, we update it.
+    // If `args.apiUrl` is undefined, we don't change it.
+    // If we want to CLEAR it, we might pass "" (empty string).
+    
+    // Simpler mapping for now:
+    const rustInput: any = {
+        id: String(args.id),
+    };
+    if (args.appName !== undefined) rustInput.app_name = args.appName;
+    if (args.keyName !== undefined) rustInput.key_name = args.keyName;
+    if (args.keyValue !== undefined) rustInput.key_value = args.keyValue;
+    if (args.apiUrl !== undefined) rustInput.api_url = args.apiUrl || null;
+    if (args.description !== undefined) rustInput.description = args.description || null;
+
     const result = await invoke<ApiKey>('update_api_key', {
-      id: args.id,
-      appName: args.appName,
-      keyName: args.keyName,
-      apiKey: args.keyValue,
-      apiUrl: args.apiUrl ?? null,
-      description: args.description ?? null,
+      input: rustInput
     });
     return result;
   } catch (error) {

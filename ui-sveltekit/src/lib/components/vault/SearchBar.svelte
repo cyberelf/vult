@@ -13,7 +13,7 @@
   }
 </script>
 
-<div class="search-bar mb-6">
+<div class="search-bar">
   <Input
     type="text"
     placeholder="Search keys by name, app, or description..."

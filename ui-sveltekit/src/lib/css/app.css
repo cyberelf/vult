@@ -1,50 +1,120 @@
 @import "tailwindcss";
 
-/* Custom theme colors for dark mode */
+@layer theme {
+  :root {
+    /* System Fonts */
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+    /* Light Theme (Default) */
+    --bg-app: oklch(0.98 0.01 250);       /* Light grey-blue background */
+    --bg-subtle: oklch(0.95 0.01 250);    /* Subtle background */
+    --bg-surface: oklch(1 0 0);           /* Pure white cards */
+    --bg-elevated: oklch(0.97 0.01 250);  /* Slightly elevated surface */
+
+    --text-primary: oklch(0.15 0.02 250);     /* Dark text */
+    --text-secondary: oklch(0.45 0.02 250);   /* Muted text */
+    --text-inverse: oklch(0.98 0.01 250);     /* Light text for dark backgrounds */
+
+    --border-subtle: oklch(0.85 0.01 250);    /* Light border */
+    --border-strong: oklch(0.70 0.02 250);    /* Stronger border */
+
+    --primary: oklch(0.5 0.2 250);            /* Vibrant Blue */
+    --primary-hover: oklch(0.45 0.22 250);    /* Darker blue on hover */
+    --primary-foreground: oklch(1 0 0);       /* White text on primary */
+
+    --danger: oklch(0.55 0.22 25);            /* Red */
+    --danger-hover: oklch(0.5 0.24 25);       /* Darker red */
+    --danger-foreground: oklch(1 0 0);        /* White text */
+
+    --muted: oklch(0.92 0.01 250);            /* Muted background */
+    --muted-foreground: oklch(0.45 0.02 250); /* Muted text */
+
+    --card: oklch(1 0 0);                     /* Card background */
+    --card-foreground: oklch(0.15 0.02 250);  /* Card text */
+
+    --destructive: oklch(0.55 0.22 25);       /* Destructive red */
+    --destructive-foreground: oklch(1 0 0);   /* White text */
+  }
+
+  /* Dark Theme */
+  [data-theme='dark'] {
+    --bg-app: oklch(0.15 0.02 250);           /* Deep dark blue-grey */
+    --bg-subtle: oklch(0.18 0.02 250);        /* Slightly lighter */
+    --bg-surface: oklch(0.21 0.02 250);       /* Card background */
+    --bg-elevated: oklch(0.25 0.03 250);      /* Hover states, modals */
+
+    --text-primary: oklch(0.95 0.01 250);     /* Light text */
+    --text-secondary: oklch(0.65 0.01 250);   /* Muted text */
+    --text-inverse: oklch(0.15 0.02 250);     /* Dark text for light backgrounds */
+
+    --border-subtle: oklch(0.30 0.02 250);    /* Dark border */
+    --border-strong: oklch(0.40 0.03 250);    /* Stronger border */
+
+    --primary: oklch(0.6 0.2 250);            /* Vibrant Blue */
+    --primary-hover: oklch(0.55 0.2 250);     /* Slightly darker */
+    --primary-foreground: oklch(1 0 0);       /* White text */
+
+    --danger: oklch(0.55 0.22 25);            /* Red */
+    --danger-hover: oklch(0.5 0.22 25);       /* Darker red */
+    --danger-foreground: oklch(1 0 0);        /* White text */
+
+    --muted: oklch(0.25 0.02 250);            /* Muted background */
+    --muted-foreground: oklch(0.65 0.01 250); /* Muted text */
+
+    --card: oklch(0.21 0.02 250);             /* Card background */
+    --card-foreground: oklch(0.95 0.01 250);  /* Card text */
+
+    --destructive: oklch(0.55 0.22 25);       /* Destructive red */
+    --destructive-foreground: oklch(1 0 0);   /* White text */
+  }
+}
+
 @theme {
-  --color-primary: oklch(0.6 0.2 250);
-  --color-primary-hover: oklch(0.55 0.2 250);
-  --color-danger: oklch(0.55 0.22 25);
-  --color-danger-hover: oklch(0.5 0.22 25);
-  --color-secondary: oklch(0.45 0.01 250);
-  --color-background: oklch(0.15 0.02 250);
-  --color-card: oklch(0.18 0.02 250);
-  --color-text: oklch(0.95 0.01 250);
-  --color-text-muted: oklch(0.65 0.01 250);
-  --color-border: oklch(0.30 0.02 250);
+  /* Map CSS variables to Tailwind theme */
+  --color-primary*: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  --color-danger*: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-foreground: var(--danger-foreground);
+  
+  --color-background*: var(--bg-app);
+  --color-background-subtle: var(--bg-subtle);
+  --color-background-surface: var(--bg-surface);
+  --color-background-elevated: var(--bg-elevated);
+
+  --color-foreground*: var(--text-primary);
+  --color-foreground-secondary: var(--text-secondary);
+  --color-foreground-inverse: var(--text-inverse);
+
+  --color-border*: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+
+  --color-muted*: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-card*: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-destructive*: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --font-family-sans: var(--font-sans);
+  --font-family-mono: var(--font-mono);
 }
 
-/* Base styles */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@layer base {
+  body {
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+  }
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  background-color: var(--color-background);
-  color: var(--color-text);
-  min-height: 100vh;
-}
-
-/* Custom utility classes */
-.container {
-  margin-inline: auto;
-  padding-inline: 1rem;
-}
-
-.vault-container {
-  max-width: 1200px;
-}
-
-.auth-container {
-  max-width: 600px;
-}
-
-/* Card styles */
-.card {
-  background-color: var(--color-card);
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+@layer utilities {
+  .container {
+    @apply mx-auto px-4;
+  }
 }

@@ -106,7 +106,7 @@
 
     <!-- Modal -->
     <div
-      class="relative bg-card rounded-lg shadow-lg w-full max-w-[500px] max-h-[85vh] overflow-y-auto"
+      class="relative bg-background-surface rounded-lg shadow-lg w-full max-w-[500px] max-h-[85vh] overflow-y-auto border border-border"
       role="dialog"
       aria-labelledby="modal-title"
     >
