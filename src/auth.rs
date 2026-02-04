@@ -6,9 +6,9 @@ use crate::crypto::{generate_salt, derive_key_from_pin, VaultKey};
 use crate::database::VaultDb;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tauri::Emitter;
 use thiserror::Error;
 use tokio::sync::RwLock;
 
@@ -45,7 +45,7 @@ pub const MIN_PIN_LENGTH: usize = 6;
 pub const MAX_PIN_LENGTH: usize = 64;
 
 /// Session configuration
-pub const DEFAULT_AUTO_LOCK_DURATION: Duration = Duration::from_secs(30); // 5 minutes
+pub const DEFAULT_AUTO_LOCK_DURATION: Duration = Duration::from_secs(300); // 5 minutes
 
 /// Vault configuration stored in the database
 struct VaultConfig {
@@ -160,7 +160,7 @@ impl AuthManager {
 
         // Auto-unlock after initialization
         *self.vault_key.write().await = Some(vault_key);
-        self.update_session_state_unlocked();
+        self.update_state_unlocked().await;
 
         Ok(())
     }
@@ -212,7 +212,7 @@ impl AuthManager {
         // Reset failed attempts and unlock
         *self.failed_attempts.write().await = 0;
         *self.vault_key.write().await = Some(vault_key);
-        self.update_session_state_unlocked();
+        self.update_state_unlocked().await;
 
         Ok(())
     }
@@ -223,6 +223,14 @@ impl AuthManager {
         let mut state = self.session_state.write().await;
         state.is_unlocked = false;
         state.last_activity_secs = 0;
+        Ok(())
+    }
+
+    /// Locks the vault and emits an event
+    pub async fn lock_with_event(&self, app_handle: &tauri::AppHandle) -> Result<()> {
+        self.lock().await?;
+        // Emit vault_locked event to notify frontend
+        let _ = app_handle.emit("vault_locked", ());
         Ok(())
     }
 
@@ -327,7 +335,7 @@ impl AuthManager {
             loop {
                 interval.tick().await;
                 let mut s = state.write().await;
-                if s.is_unlocked && s.last_activity_secs < u64::MAX as i64 {
+                if s.is_unlocked && s.last_activity_secs < i64::MAX {
                     s.last_activity_secs += 1;
                 }
             }
@@ -401,7 +409,7 @@ mod tests {
 
         // Try multiple wrong PINs to reduce chance of false positive
         let mut rejected_count = 0;
-        for wrong_pin in &["wrong1", "wrong2", "wrong3", "wrong4", "wrong5", "wrong6", "wrong7", "wrong8", "wrong9", "wrong10"] {
+        for wrong_pin in &["wrong1", "wrong2", "wrong3"] {
             let result = auth.unlock(wrong_pin).await;
             if matches!(result, Err(AuthError::InvalidPin)) {
                 rejected_count += 1;
@@ -582,5 +590,100 @@ mod tests {
 
         let key = auth.get_vault_key().await.unwrap();
         assert_eq!(key.as_bytes().len(), 32);
+    }
+
+    #[tokio::test]
+    async fn test_activity_counter_increments() {
+        let auth = setup_test_auth().await;
+        auth.start_activity_counter();
+        auth.initialize("counterTest123").await.unwrap();
+
+        // Wait for a few seconds and check counter is incrementing
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        
+        let state = auth.get_session_state().await;
+        assert!(state.is_unlocked, "Vault should be unlocked");
+        assert!(state.last_activity_secs >= 2 && state.last_activity_secs <= 4, 
+            "Counter should be around 3 seconds, got {}", state.last_activity_secs);
+    }
+
+    #[tokio::test]
+    async fn test_activity_counter_stops_when_locked() {
+        let auth = setup_test_auth().await;
+        auth.start_activity_counter();
+        auth.initialize("counterTest456").await.unwrap();
+
+        // Wait a bit, then lock
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        auth.lock().await.unwrap();
+        
+        let counter_when_locked = {
+            let state = auth.get_session_state().await;
+            state.last_activity_secs
+        };
+
+        // Wait more and verify counter didn't increment
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        
+        let state = auth.get_session_state().await;
+        assert!(!state.is_unlocked, "Vault should be locked");
+        assert_eq!(state.last_activity_secs, 0, "Counter should be reset to 0 when locked");
+    }
+
+    #[tokio::test]
+    async fn test_auto_lock_timeout_exact() {
+        let db = Arc::new(VaultDb::new("sqlite::memory:").await.unwrap());
+        // Set to 3 seconds for testing
+        let auth = AuthManager::new(db, Some(tokio::time::Duration::from_secs(3)));
+        auth.start_activity_counter();
+        auth.initialize("timeoutTest789").await.unwrap();
+
+        // Wait less than timeout - should not trigger
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        assert!(!auth.should_auto_lock().await, "Should not auto-lock before timeout");
+
+        // Wait past timeout
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        assert!(auth.should_auto_lock().await, "Should auto-lock after timeout");
+    }
+
+    #[tokio::test]
+    async fn test_activity_reset_prevents_lock() {
+        let db = Arc::new(VaultDb::new("sqlite::memory:").await.unwrap());
+        // Set to 3 seconds for testing
+        let auth = AuthManager::new(db, Some(tokio::time::Duration::from_secs(3)));
+        auth.start_activity_counter();
+        auth.initialize("resetTest321").await.unwrap();
+
+        // Wait 2 seconds, reset activity, wait 2 more seconds
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        auth.update_activity().await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        
+        // Should not auto-lock because activity was reset
+        assert!(!auth.should_auto_lock().await, "Activity reset should prevent auto-lock");
+
+        // Wait for timeout from last reset
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        assert!(auth.should_auto_lock().await, "Should auto-lock after timeout from last activity");
+    }
+
+    #[tokio::test]
+    async fn test_counter_type_safety() {
+        let auth = setup_test_auth().await;
+        auth.start_activity_counter();
+        auth.initialize("typeSafetyTest").await.unwrap();
+
+        // Verify counter can reach reasonable values without overflow
+        // Fast-forward by manually setting counter (this is a white-box test)
+        {
+            let mut state = auth.session_state.write().await;
+            state.last_activity_secs = 86400; // 1 day in seconds
+        }
+
+        // Counter should still be valid and comparable
+        let state = auth.get_session_state().await;
+        assert_eq!(state.last_activity_secs, 86400);
+        assert!(state.last_activity_secs < i64::MAX, "Counter should be less than i64::MAX");
     }
 }

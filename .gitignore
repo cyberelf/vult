@@ -34,3 +34,7 @@ __pycache__/
 venv/
 .venv/
 env/
+
+# Logs
+logs/
+*.log

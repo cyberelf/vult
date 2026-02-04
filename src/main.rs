@@ -57,17 +57,8 @@ async fn main() {
     let clipboard_manager = Arc::new(ClipboardManager::new().unwrap());
     clipboard_manager.start_auto_clear_checker();
 
-    // Start auto-lock checker
-    let auth_clone = Arc::clone(&auth_manager);
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(10));
-        loop {
-            interval.tick().await;
-            if auth_clone.should_auto_lock().await {
-                let _ = auth_clone.lock().await;
-            }
-        }
-    });
+    // Clone auth_manager before passing to Tauri
+    let auth_for_setup = Arc::clone(&auth_manager);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -91,7 +82,19 @@ async fn main() {
             commands::update_activity,
             commands::check_auto_lock,
         ])
-        .setup(|_app| {
+        .setup(move |app| {
+            // Start auto-lock checker with app handle for event emission
+            let auth_clone = Arc::clone(&auth_for_setup);
+            let app_handle = app.handle().clone();
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(10));
+                loop {
+                    interval.tick().await;
+                    if auth_clone.should_auto_lock().await {
+                        let _ = auth_clone.lock_with_event(&app_handle).await;
+                    }
+                }
+            });
             Ok(())
         })
         .run(tauri::generate_context!())

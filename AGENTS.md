@@ -185,6 +185,11 @@ The app uses `eprintln!` for logging to stderr, visible in the terminal when run
 - Derive per-key key: `derive_per_key_encryption_key(master_key, app_name, key_name, salt)`
 - Old migrated keys may have all-zero salts (call `reencrypt_all_keys()`)
 
+
+## Take Record of Lessons
+
+When finding yourself making simple mistakes or repetitive failures, take note in [LESSONS.md](LESSONS.md) for future reference.
+
 ## Version Release Checklist
 
 When preparing a new release:
