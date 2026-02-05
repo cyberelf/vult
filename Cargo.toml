@@ -2,13 +2,31 @@
 name = "vult"
 version = "0.1.0"
 edition = "2021"
+description = "Secure API key vault with PIN authentication and AES-256-GCM encryption"
+license = "MIT"
+repository = "https://github.com/cyberelf/vult"
+keywords = ["security", "vault", "api-keys", "encryption"]
+categories = ["cryptography", "command-line-utilities"]
+
+[lib]
+name = "vult"
+path = "src/lib.rs"
+
+[[bin]]
+name = "vult"
+path = "src/bin/vult.rs"
+required-features = ["cli"]
+
+[[bin]]
+name = "vult-gui"
+path = "src/bin/vult-gui.rs"
+required-features = ["gui"]
 
 [build-dependencies]
-tauri-build = { version = "2.1", features = [] }
+tauri-build = { version = "2.1", features = [], optional = true }
 
 [dependencies]
-tauri = { version = "2.1", features = ["devtools"] }
-tauri-plugin-shell = "2"
+# Core dependencies (always included in library)
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.42", features = ["full"] }
@@ -24,6 +42,29 @@ arboard = "3.4"
 hex = "0.4"
 dirs = "5.0.1"
 
+# GUI dependencies (optional, for vult-gui binary)
+tauri = { version = "2.1", features = ["devtools"], optional = true }
+tauri-plugin-shell = { version = "2", optional = true }
+
+# CLI dependencies (optional, for vult binary)
+clap = { version = "4.5", features = ["derive", "env", "wrap_help"], optional = true }
+dialoguer = { version = "0.11", optional = true }
+rpassword = { version = "7.3", optional = true }
+comfy-table = { version = "7.1", optional = true }
+colored = { version = "2.1", optional = true }
+ctrlc = { version = "3.4", optional = true }
+
 [features]
-default = ["custom-protocol"]
+default = ["gui"]
+gui = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-build", "custom-protocol"]
+cli = ["dep:clap", "dep:dialoguer", "dep:rpassword", "dep:comfy-table", "dep:colored", "dep:ctrlc"]
 custom-protocol = ["tauri/custom-protocol"]
+
+# Development features
+dev = ["gui", "cli"]
+
+[dev-dependencies]
+proptest = "1.6"
+tempfile = "3.10"
+test-case = "3.3"
+

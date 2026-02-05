@@ -24,7 +24,10 @@ mod integration_tests {
         // This would integrate with the actual auth module
         // For now, it's a placeholder showing the structure
 
-        assert!(db_path.exists() || !db_path.exists(), "Test database path setup");
+        assert!(
+            db_path.exists() || !db_path.exists(),
+            "Test database path setup"
+        );
     }
 
     // Test vault operations end-to-end

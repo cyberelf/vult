@@ -3,6 +3,7 @@
   "productName": "Vult",
   "version": "0.1.0",
   "identifier": "com.vult.app",
+  "mainBinaryName": "vult-gui",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",

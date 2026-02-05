@@ -1,4 +1,35 @@
-//! Clipboard manager with auto-clear functionality
+//! Clipboard manager with auto-clear functionality.
+//!
+//! This module provides secure clipboard operations with automatic
+//! clearing after a timeout period.
+//!
+//! # Features
+//!
+//! - Copy text to clipboard with auto-clear timeout
+//! - Configurable timeout (default: 30 seconds)
+//! - Thread-safe async operations
+//! - Restores original clipboard content after clear
+//!
+//! # Security
+//!
+//! - Clipboard contents are automatically cleared after timeout
+//! - Original clipboard content is restored when possible
+//! - Prevents sensitive data from lingering in clipboard
+//!
+//! # Example
+//!
+//! ```rust,ignore
+//! use vult::clipboard::ClipboardManager;
+//! use std::time::Duration;
+//!
+//! let manager = ClipboardManager::new()?;
+//!
+//! // Copy with 45-second auto-clear
+//! manager.copy_with_timeout("secret".to_string(), Duration::from_secs(45)).await;
+//!
+//! // Start background clearing task
+//! manager.start_auto_clear();
+//! ```
 
 use arboard::Clipboard;
 use std::sync::Arc;
@@ -36,10 +67,7 @@ impl ClipboardManager {
         let mut inner = self.inner.lock().await;
 
         // Save original content
-        let original = inner
-            .clipboard
-            .as_mut()
-            .and_then(|cb| cb.get_text().ok());
+        let original = inner.clipboard.as_mut().and_then(|cb| cb.get_text().ok());
 
         // Copy new content
         if let Some(clipboard) = inner.clipboard.as_mut() {

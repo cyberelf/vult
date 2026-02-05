@@ -102,12 +102,16 @@ cargo tauri build
 
 ## Usage
 
-### First Time Setup
+Vult provides two interfaces: a GUI (desktop app) and a CLI (command-line).
+
+### GUI (Desktop Application)
+
+#### First Time Setup
 1. Launch Vult
 2. Create a PIN (minimum 6 characters)
 3. **Important**: Remember your PIN - there is no recovery mechanism!
 
-### Adding API Keys
+#### Adding API Keys
 1. Click "+ Add Key"
 2. Fill in the required fields:
    - **Key Name**: Required (e.g., "GitHub Personal Token")
@@ -117,16 +121,94 @@ cargo tauri build
    - **API Key Value**: Required
 3. Click "Save"
 
-### Managing Keys
+#### Managing Keys
 - **View**: Click the eye icon to show/hide the key value
 - **Copy**: Click the copy icon to copy the key to clipboard
 - **Edit**: Click the edit icon to modify key details
 - **Delete**: Click the delete icon to remove a key
 - **Search**: Use the search bar to filter keys
 
-### Locking the Vault
+#### Locking the Vault
 - Click the "Lock" button to manually lock the vault
 - Auto-locks after 5 minutes of inactivity
+
+### CLI (Command-Line Interface)
+
+The CLI provides full vault functionality from the terminal.
+
+#### Installation
+
+```bash
+# Build the CLI
+cargo build --release --no-default-features --features cli --bin vult
+
+# Install (copy to PATH)
+cp target/release/vult ~/.local/bin/  # Linux
+```
+
+#### Commands
+
+```bash
+# Initialize a new vault
+vult init
+
+# Add a key
+vult add github-token -a github
+vult add my-api-key --stdin < secret.txt
+
+# Get a key value
+vult get github-token -a github
+vult get github-token -a github --copy  # Copy to clipboard
+
+# List all keys
+vult list
+vult list --json
+vult list --timestamps
+
+# Search keys
+vult search github
+
+# Update a key
+vult update github-token -a github --value "new-value"
+vult update github-token -a github --description "Updated token"
+
+# Delete a key
+vult delete github-token -a github
+vult delete github-token -a github --force  # Skip confirmation
+
+# Change PIN
+vult change-pin
+
+# Show vault status
+vult status
+```
+
+#### Global Options
+
+```bash
+--json           # Output in JSON format
+--db-path PATH   # Use custom database path
+```
+
+#### Environment Variables
+
+```bash
+VULT_DB_PATH     # Custom database path (default: ~/.vult/vault.db)
+```
+
+#### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | Authentication error |
+| 2 | Not found |
+| 3 | Not initialized |
+| 4 | Duplicate key |
+| 5 | Invalid input |
+| 6 | Encryption error |
+| 7 | Database error |
+| 8 | I/O error |
 
 ## Development
 
@@ -134,12 +216,16 @@ cargo tauri build
 ```
 vult/
 ├── src/                    # Rust backend
-│   ├── main.rs            # Application entry point
-│   ├── auth.rs            # Authentication & session management
+│   ├── main.rs            # GUI entry point
+│   ├── lib.rs             # Library entry point
+│   ├── core/              # Core types, constants, validation
+│   ├── services/          # Business logic (VaultManager, AuthService, etc.)
+│   ├── gui/               # GUI-specific (AuthManager with Tauri events)
 │   ├── commands.rs        # Tauri command handlers
 │   ├── crypto.rs          # Cryptographic operations
 │   ├── database.rs        # Database operations & migrations
-│   └── clipboard.rs       # Clipboard management
+│   ├── clipboard.rs       # Clipboard management
+│   └── bin/               # CLI and GUI binaries
 ├── ui-sveltekit/          # Frontend UI (SvelteKit + TypeScript)
 │   ├── src/
 │   │   ├── routes/       # SvelteKit routes (+layout.svelte, +page.svelte)

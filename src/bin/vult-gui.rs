@@ -1,3 +1,8 @@
+//! Vult GUI Application - Tauri Desktop Interface
+//!
+//! This is the graphical user interface for Vult, built with Tauri.
+//! For command-line usage, see the `vult` binary.
+
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -8,9 +13,12 @@ use vult::clipboard::ClipboardManager;
 use vult::database::VaultDb;
 use vult::gui::{commands, AuthManager};
 
+/// Get the default vault database path.
+///
+/// On Linux: ~/.vult/vault.db
+/// On Windows: %USERPROFILE%\.vult\vault.db
 fn get_vault_path() -> PathBuf {
-    let mut path = dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."));
+    let mut path = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
     path.push(".vult");
     std::fs::create_dir_all(&path).ok();
     path.push("vault.db");
@@ -29,7 +37,7 @@ async fn main() {
 
     // Try different path formats for Windows
     let vault_str = vault_path.to_str().expect("Invalid path");
-    let db_path = format!("sqlite://{}?mode=rwc", vault_str.replace('\\', "/" ));
+    let db_path = format!("sqlite://{}?mode=rwc", vault_str.replace('\\', "/"));
 
     eprintln!("Database path: {}", db_path);
 
@@ -39,10 +47,10 @@ async fn main() {
             .expect("Failed to initialize vault database"),
     );
 
-    // Initialize authentication manager
+    // Initialize authentication manager with 5-minute auto-lock
     let auth_manager = Arc::new(AuthManager::new(
         Arc::clone(&db),
-        Some(tokio::time::Duration::from_secs(300)), // 5 minutes
+        Some(tokio::time::Duration::from_secs(300)),
     ));
 
     // Start activity counter for auto-lock

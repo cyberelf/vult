@@ -1,11 +1,57 @@
-//! Database operations for the vault
+//! Database operations for the vault.
 //!
-//! Uses SQLite with SQLx for encrypted storage of API keys.
+//! This module provides:
+//! - SQLite database connection management
+//! - Schema versioning and migrations
+//! - API key CRUD operations
+//! - PIN hash storage
+//!
+//! # Database Location
+//!
+//! Default location: `~/.vult/vault.db`
+//!
+//! # Schema Versioning
+//!
+//! The database includes a `schema_version` table that tracks migrations.
+//! Migrations are applied automatically on startup. The application will
+//! refuse to open a database with a newer schema version.
+//!
+//! # Current Schema (v2)
+//!
+//! ```sql
+//! CREATE TABLE api_keys (
+//!     id TEXT PRIMARY KEY,
+//!     app_name TEXT,
+//!     key_name TEXT NOT NULL,
+//!     encrypted_key BLOB NOT NULL,
+//!     nonce BLOB NOT NULL,
+//!     key_salt BLOB NOT NULL,  -- Per-key encryption salt
+//!     description TEXT,
+//!     expires_at TEXT,
+//!     created_at TEXT NOT NULL,
+//!     updated_at TEXT NOT NULL,
+//!     UNIQUE(app_name, key_name)
+//! );
+//! ```
+//!
+//! # Example
+//!
+//! ```rust,ignore
+//! use vult::database::VaultDb;
+//!
+//! let db = VaultDb::new("sqlite://~/.vult/vault.db?mode=rwc").await?;
+//! let is_init = db.is_initialized().await?;
+//! ```
 
-use crate::crypto::{CryptoError, EncryptedData, VaultKey, derive_per_key_encryption_key, generate_salt};
+use crate::crypto::{
+    derive_per_key_encryption_key, generate_salt, CryptoError, EncryptedData, VaultKey,
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{sqlite::{SqlitePool, SqliteRow}, FromRow, Pool, Row, Sqlite};
+use sqlx::{
+    sqlite::{SqlitePool, SqliteRow},
+    FromRow, Pool, Row, Sqlite,
+};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -168,9 +214,10 @@ impl VaultDb {
     /// Migrates the database schema if needed
     async fn migrate(&self) -> Result<()> {
         // Get current schema version
-        let version = sqlx::query("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1")
-            .fetch_optional(&self.pool)
-            .await;
+        let version =
+            sqlx::query("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1")
+                .fetch_optional(&self.pool)
+                .await;
 
         let current_version = match version {
             Ok(Some(row)) => {
@@ -189,7 +236,10 @@ impl VaultDb {
         }
 
         if current_version < SCHEMA_VERSION {
-            eprintln!("Migrating database from version {} to {}", current_version, SCHEMA_VERSION);
+            eprintln!(
+                "Migrating database from version {} to {}",
+                current_version, SCHEMA_VERSION
+            );
             // Create backup before migration
             self.backup().await?;
             self.run_migration(current_version).await?;
@@ -213,7 +263,7 @@ impl VaultDb {
 
                 // Check if api_keys table exists
                 let _table_exists = sqlx::query(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='api_keys'"
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='api_keys'",
                 )
                 .fetch_optional(&self.pool)
                 .await?;
@@ -337,8 +387,12 @@ impl VaultDb {
         }
 
         // Drop old table and rename new one
-        sqlx::query("DROP TABLE api_keys").execute(&self.pool).await?;
-        sqlx::query("ALTER TABLE api_keys_v2 RENAME TO api_keys").execute(&self.pool).await?;
+        sqlx::query("DROP TABLE api_keys")
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("ALTER TABLE api_keys_v2 RENAME TO api_keys")
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }
@@ -351,10 +405,14 @@ impl VaultDb {
     ) -> Result<ApiKeyWithSecret> {
         // Validate inputs
         if input.key_name.trim().is_empty() {
-            return Err(DbError::InvalidInput("key_name cannot be empty".to_string()));
+            return Err(DbError::InvalidInput(
+                "key_name cannot be empty".to_string(),
+            ));
         }
         if input.key_value.trim().is_empty() {
-            return Err(DbError::InvalidInput("key_value cannot be empty".to_string()));
+            return Err(DbError::InvalidInput(
+                "key_value cannot be empty".to_string(),
+            ));
         }
 
         let id = Uuid::new_v4().to_string();
@@ -598,7 +656,11 @@ impl VaultDb {
     }
 
     /// Decrypts an API key row
-    fn decrypt_row(&self, row: EncryptedApiKeyRow, master_key: &VaultKey) -> Result<ApiKeyWithSecret> {
+    fn decrypt_row(
+        &self,
+        row: EncryptedApiKeyRow,
+        master_key: &VaultKey,
+    ) -> Result<ApiKeyWithSecret> {
         // Derive the per-key encryption key using the stored salt
         let mut salt_array = [0u8; 32];
         salt_array.copy_from_slice(&row.key_salt[..32]);
@@ -690,7 +752,7 @@ impl VaultDb {
                     UPDATE api_keys
                     SET encrypted_key_value = ?1, nonce = ?2, key_salt = ?3
                     WHERE id = ?4
-                    "#
+                    "#,
                 )
                 .bind(&new_encrypted.ciphertext)
                 .bind(&new_encrypted.nonce)
@@ -722,10 +784,11 @@ impl VaultDb {
 
         // Use SQL backup command via SQLite
         // Note: For in-memory databases, this will be skipped
-        let result: Result<_> = sqlx::query("SELECT file FROM pragma_database_list WHERE name='main'")
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(Into::into);
+        let result: Result<_> =
+            sqlx::query("SELECT file FROM pragma_database_list WHERE name='main'")
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(Into::into);
 
         match result {
             Ok(Some(row)) => {
@@ -749,6 +812,7 @@ impl VaultDb {
     }
 
     /// Cleans up old backup files, keeping only the 5 most recent
+    #[allow(dead_code)]
     async fn cleanup_old_backups(&self, _database_path: &std::path::Path) -> Result<()> {
         // This would be implemented when we have proper file path access
         // For now, it's a placeholder
@@ -785,9 +849,10 @@ impl VaultDb {
 
     /// Gets the current schema version of the database
     pub async fn get_schema_version(&self) -> Result<i64> {
-        let version = sqlx::query("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1")
-            .fetch_optional(&self.pool)
-            .await?;
+        let version =
+            sqlx::query("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1")
+                .fetch_optional(&self.pool)
+                .await?;
 
         match version {
             Some(row) => {
@@ -877,21 +942,31 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        db.create_api_key(CreateApiKey {
-            app_name: Some("App1".to_string()),
-            key_name: "key1".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "value1".to_string(),
-        }, &key).await.unwrap();
+        db.create_api_key(
+            CreateApiKey {
+                app_name: Some("App1".to_string()),
+                key_name: "key1".to_string(),
+                api_url: None,
+                description: None,
+                key_value: "value1".to_string(),
+            },
+            &key,
+        )
+        .await
+        .unwrap();
 
-        db.create_api_key(CreateApiKey {
-            app_name: Some("App2".to_string()),
-            key_name: "key2".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "value2".to_string(),
-        }, &key).await.unwrap();
+        db.create_api_key(
+            CreateApiKey {
+                app_name: Some("App2".to_string()),
+                key_name: "key2".to_string(),
+                api_url: None,
+                description: None,
+                key_value: "value2".to_string(),
+            },
+            &key,
+        )
+        .await
+        .unwrap();
 
         let keys = db.list_api_keys().await.unwrap();
         assert_eq!(keys.len(), 2);
@@ -902,13 +977,18 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        db.create_api_key(CreateApiKey {
-            app_name: Some("GitHub".to_string()),
-            key_name: "personal_token".to_string(),
-            api_url: Some("https://api.github.com".to_string()),
-            description: Some("Personal access token".to_string()),
-            key_value: "ghp_xxxxx".to_string(),
-        }, &key).await.unwrap();
+        db.create_api_key(
+            CreateApiKey {
+                app_name: Some("GitHub".to_string()),
+                key_name: "personal_token".to_string(),
+                api_url: Some("https://api.github.com".to_string()),
+                description: Some("Personal access token".to_string()),
+                key_value: "ghp_xxxxx".to_string(),
+            },
+            &key,
+        )
+        .await
+        .unwrap();
 
         let results = db.search_api_keys("github").await.unwrap();
         assert_eq!(results.len(), 1);
@@ -923,13 +1003,19 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        let created = db.create_api_key(CreateApiKey {
-            app_name: Some("TestApp".to_string()),
-            key_name: "key1".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "value1".to_string(),
-        }, &key).await.unwrap();
+        let created = db
+            .create_api_key(
+                CreateApiKey {
+                    app_name: Some("TestApp".to_string()),
+                    key_name: "key1".to_string(),
+                    api_url: None,
+                    description: None,
+                    key_value: "value1".to_string(),
+                },
+                &key,
+            )
+            .await
+            .unwrap();
 
         db.delete_api_key(&created.api_key.id).await.unwrap();
 
@@ -942,27 +1028,45 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        let created = db.create_api_key(CreateApiKey {
-            app_name: Some("TestApp".to_string()),
-            key_name: "key1".to_string(),
-            api_url: Some("https://old.example.com".to_string()),
-            description: Some("Old description".to_string()),
-            key_value: "old_value".to_string(),
-        }, &key).await.unwrap();
+        let created = db
+            .create_api_key(
+                CreateApiKey {
+                    app_name: Some("TestApp".to_string()),
+                    key_name: "key1".to_string(),
+                    api_url: Some("https://old.example.com".to_string()),
+                    description: Some("Old description".to_string()),
+                    key_value: "old_value".to_string(),
+                },
+                &key,
+            )
+            .await
+            .unwrap();
 
-        let updated = db.update_api_key(UpdateApiKey {
-            id: created.api_key.id.clone(),
-            app_name: Some("UpdatedApp".to_string()),
-            key_name: Some("updated_key".to_string()),
-            api_url: Some(Some("https://new.example.com".to_string())),
-            description: Some(Some("New description".to_string())),
-            key_value: Some("new_value".to_string()),
-        }, &key).await.unwrap();
+        let updated = db
+            .update_api_key(
+                UpdateApiKey {
+                    id: created.api_key.id.clone(),
+                    app_name: Some("UpdatedApp".to_string()),
+                    key_name: Some("updated_key".to_string()),
+                    api_url: Some(Some("https://new.example.com".to_string())),
+                    description: Some(Some("New description".to_string())),
+                    key_value: Some("new_value".to_string()),
+                },
+                &key,
+            )
+            .await
+            .unwrap();
 
         assert_eq!(updated.api_key.app_name.as_deref(), Some("UpdatedApp"));
         assert_eq!(updated.api_key.key_name, "updated_key");
-        assert_eq!(updated.api_key.api_url, Some("https://new.example.com".to_string()));
-        assert_eq!(updated.api_key.description, Some("New description".to_string()));
+        assert_eq!(
+            updated.api_key.api_url,
+            Some("https://new.example.com".to_string())
+        );
+        assert_eq!(
+            updated.api_key.description,
+            Some("New description".to_string())
+        );
         assert_eq!(updated.key_value, "new_value");
     }
 
@@ -971,23 +1075,35 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        let created = db.create_api_key(CreateApiKey {
-            app_name: Some("TestApp".to_string()),
-            key_name: "key1".to_string(),
-            api_url: Some("https://example.com".to_string()),
-            description: Some("Description".to_string()),
-            key_value: "value".to_string(),
-        }, &key).await.unwrap();
+        let created = db
+            .create_api_key(
+                CreateApiKey {
+                    app_name: Some("TestApp".to_string()),
+                    key_name: "key1".to_string(),
+                    api_url: Some("https://example.com".to_string()),
+                    description: Some("Description".to_string()),
+                    key_value: "value".to_string(),
+                },
+                &key,
+            )
+            .await
+            .unwrap();
 
         // Update only app_name
-        let updated = db.update_api_key(UpdateApiKey {
-            id: created.api_key.id.clone(),
-            app_name: Some("NewApp".to_string()),
-            key_name: None,
-            api_url: None,
-            description: None,
-            key_value: None,
-        }, &key).await.unwrap();
+        let updated = db
+            .update_api_key(
+                UpdateApiKey {
+                    id: created.api_key.id.clone(),
+                    app_name: Some("NewApp".to_string()),
+                    key_name: None,
+                    api_url: None,
+                    description: None,
+                    key_value: None,
+                },
+                &key,
+            )
+            .await
+            .unwrap();
 
         assert_eq!(updated.api_key.app_name.as_deref(), Some("NewApp"));
         assert_eq!(updated.api_key.key_name, "key1"); // Unchanged
@@ -999,13 +1115,18 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        db.create_api_key(CreateApiKey {
-            app_name: Some("GitHub".to_string()),
-            key_name: "token".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "value1".to_string(),
-        }, &key).await.unwrap();
+        db.create_api_key(
+            CreateApiKey {
+                app_name: Some("GitHub".to_string()),
+                key_name: "token".to_string(),
+                api_url: None,
+                description: None,
+                key_value: "value1".to_string(),
+            },
+            &key,
+        )
+        .await
+        .unwrap();
 
         let results = db.search_api_keys("GITHUB").await.unwrap();
         assert_eq!(results.len(), 1);
@@ -1019,13 +1140,18 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        db.create_api_key(CreateApiKey {
-            app_name: Some("TestApp".to_string()),
-            key_name: "key1".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "value".to_string(),
-        }, &key).await.unwrap();
+        db.create_api_key(
+            CreateApiKey {
+                app_name: Some("TestApp".to_string()),
+                key_name: "key1".to_string(),
+                api_url: None,
+                description: None,
+                key_value: "value".to_string(),
+            },
+            &key,
+        )
+        .await
+        .unwrap();
 
         let results = db.search_api_keys("nonexistent").await.unwrap();
         assert_eq!(results.len(), 0);
@@ -1043,14 +1169,19 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        let result = db.update_api_key(UpdateApiKey {
-            id: "nonexistent-id".to_string(),
-            app_name: Some("NewApp".to_string()),
-            key_name: None,
-            api_url: None,
-            description: None,
-            key_value: None,
-        }, &key).await;
+        let result = db
+            .update_api_key(
+                UpdateApiKey {
+                    id: "nonexistent-id".to_string(),
+                    app_name: Some("NewApp".to_string()),
+                    key_name: None,
+                    api_url: None,
+                    description: None,
+                    key_value: None,
+                },
+                &key,
+            )
+            .await;
 
         assert!(matches!(result, Err(DbError::NotFound)));
     }
@@ -1060,21 +1191,31 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        db.create_api_key(CreateApiKey {
-            app_name: Some("GitHub".to_string()),
-            key_name: "token1".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "value1".to_string(),
-        }, &key).await.unwrap();
+        db.create_api_key(
+            CreateApiKey {
+                app_name: Some("GitHub".to_string()),
+                key_name: "token1".to_string(),
+                api_url: None,
+                description: None,
+                key_value: "value1".to_string(),
+            },
+            &key,
+        )
+        .await
+        .unwrap();
 
-        db.create_api_key(CreateApiKey {
-            app_name: Some("GitHub".to_string()),
-            key_name: "token2".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "value2".to_string(),
-        }, &key).await.unwrap();
+        db.create_api_key(
+            CreateApiKey {
+                app_name: Some("GitHub".to_string()),
+                key_name: "token2".to_string(),
+                api_url: None,
+                description: None,
+                key_value: "value2".to_string(),
+            },
+            &key,
+        )
+        .await
+        .unwrap();
 
         let keys = db.list_api_keys().await.unwrap();
         assert_eq!(keys.len(), 2);
@@ -1085,20 +1226,29 @@ mod tests {
         let db = setup_test_db().await;
         let key1 = derive_test_key();
 
-        let created = db.create_api_key(CreateApiKey {
-            app_name: Some("TestApp".to_string()),
-            key_name: "key1".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "secret_value".to_string(),
-        }, &key1).await.unwrap();
+        let created = db
+            .create_api_key(
+                CreateApiKey {
+                    app_name: Some("TestApp".to_string()),
+                    key_name: "key1".to_string(),
+                    api_url: None,
+                    description: None,
+                    key_value: "secret_value".to_string(),
+                },
+                &key1,
+            )
+            .await
+            .unwrap();
 
         // Try to decrypt with a different key
         let salt2 = crate::crypto::generate_salt();
         let key2 = crate::crypto::derive_key_from_pin("differentPin456", &salt2).unwrap();
 
         let result = db.get_api_key(&created.api_key.id, &key2).await;
-        assert!(result.is_err(), "Should not be able to decrypt with wrong key");
+        assert!(
+            result.is_err(),
+            "Should not be able to decrypt with wrong key"
+        );
     }
 
     #[tokio::test]
@@ -1106,13 +1256,18 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        let result = db.create_api_key(CreateApiKey {
-            app_name: Some("TestApp".to_string()),
-            key_name: "key1".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "value".to_string(),
-        }, &key).await;
+        let result = db
+            .create_api_key(
+                CreateApiKey {
+                    app_name: Some("TestApp".to_string()),
+                    key_name: "key1".to_string(),
+                    api_url: None,
+                    description: None,
+                    key_value: "value".to_string(),
+                },
+                &key,
+            )
+            .await;
 
         assert!(result.is_ok());
         let api_key = result.unwrap();
@@ -1125,13 +1280,18 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        db.create_api_key(CreateApiKey {
-            app_name: Some("Test-App_v2".to_string()),
-            key_name: "api-key.token".to_string(),
-            api_url: None,
-            description: Some("A test API key for testing".to_string()),
-            key_value: "value".to_string(),
-        }, &key).await.unwrap();
+        db.create_api_key(
+            CreateApiKey {
+                app_name: Some("Test-App_v2".to_string()),
+                key_name: "api-key.token".to_string(),
+                api_url: None,
+                description: Some("A test API key for testing".to_string()),
+                key_value: "value".to_string(),
+            },
+            &key,
+        )
+        .await
+        .unwrap();
 
         let results = db.search_api_keys("Test-App").await.unwrap();
         assert_eq!(results.len(), 1);
@@ -1146,29 +1306,41 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        db.create_api_key(CreateApiKey {
-            app_name: Some("GitHub".to_string()),
-            key_name: "token".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "value1".to_string(),
-        }, &key).await.unwrap();
+        db.create_api_key(
+            CreateApiKey {
+                app_name: Some("GitHub".to_string()),
+                key_name: "token".to_string(),
+                api_url: None,
+                description: None,
+                key_value: "value1".to_string(),
+            },
+            &key,
+        )
+        .await
+        .unwrap();
 
         // Note: COLLATE NOCASE should make this fail, but SQLite behavior may vary
         // This test documents the actual behavior
-        let result = db.create_api_key(CreateApiKey {
-            app_name: Some("GITHUB".to_string()),
-            key_name: "TOKEN".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "value2".to_string(),
-        }, &key).await;
+        let result = db
+            .create_api_key(
+                CreateApiKey {
+                    app_name: Some("GITHUB".to_string()),
+                    key_name: "TOKEN".to_string(),
+                    api_url: None,
+                    description: None,
+                    key_value: "value2".to_string(),
+                },
+                &key,
+            )
+            .await;
 
         // The UNIQUE constraint with COLLATE NOCASE should reject this
         // but behavior may differ based on SQLite version and configuration
         match result {
             Ok(_) => {
-                eprintln!("WARNING: Case-insensitive uniqueness not enforced - this is a potential issue");
+                eprintln!(
+                    "WARNING: Case-insensitive uniqueness not enforced - this is a potential issue"
+                );
             }
             Err(_) => {
                 // Expected - case-insensitive uniqueness is working
@@ -1181,13 +1353,18 @@ mod tests {
         let db = setup_test_db().await;
         let key = derive_test_key();
 
-        db.create_api_key(CreateApiKey {
-            app_name: Some("TestApp".to_string()),
-            key_name: "key1".to_string(),
-            api_url: None,
-            description: None,
-            key_value: "secret123".to_string(),
-        }, &key).await.unwrap();
+        db.create_api_key(
+            CreateApiKey {
+                app_name: Some("TestApp".to_string()),
+                key_name: "key1".to_string(),
+                api_url: None,
+                description: None,
+                key_value: "secret123".to_string(),
+            },
+            &key,
+        )
+        .await
+        .unwrap();
 
         let keys = db.list_api_keys().await.unwrap();
         assert_eq!(keys.len(), 1);
@@ -1220,17 +1397,19 @@ mod tests {
                 id TEXT PRIMARY KEY,
                 app_name TEXT,
                 key_name TEXT NOT NULL
-            )"
+            )",
         )
         .execute(&db.pool)
         .await
         .unwrap();
 
         // Verify the orphaned table exists
-        let tables = sqlx::query("SELECT name FROM sqlite_master WHERE type='table' AND name='api_keys_new'")
-            .fetch_all(&db.pool)
-            .await
-            .unwrap();
+        let tables = sqlx::query(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='api_keys_new'",
+        )
+        .fetch_all(&db.pool)
+        .await
+        .unwrap();
         assert_eq!(tables.len(), 1);
 
         // Run cleanup (this happens automatically in migrate, but we can test it by creating a new db)

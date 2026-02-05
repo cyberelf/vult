@@ -17,19 +17,28 @@ Instructions for AI assistants working on the Vult project.
 ```
 vult/
 ├── src/                    # Rust backend (Tauri commands)
-│   ├── main.rs            # Application entry point, DB path setup
-│   ├── auth.rs            # PIN validation, session management, auto-lock
-│   ├── commands.rs        # Tauri command handlers (IPC)
+│   ├── main.rs            # GUI entry point
+│   ├── lib.rs             # Library entry point
+│   ├── core/              # Core types, constants, validation
+│   │   └── types.rs       # PIN validation, constants
+│   ├── services/          # Business logic layer
+│   │   ├── vault_manager.rs   # Main orchestrator
+│   │   ├── auth_service.rs    # Authentication (CLI/library)
+│   │   ├── key_service.rs     # Key CRUD operations
+│   │   └── crypto_service.rs  # Encryption wrapper
+│   ├── gui/               # GUI-specific (feature-gated)
+│   │   ├── auth_manager.rs    # AuthManager with Tauri events
+│   │   └── commands.rs        # Tauri IPC command handlers
 │   ├── crypto.rs          # Argon2id, AES-GCM, per-key encryption
-│   ├── database.rs        # SQLite operations, migrations, schema versioning
-│   └── clipboard.rs       # Clipboard auto-clear (45s timeout)
-├── ui/                     # Frontend UI
-│   ├── index.html         # Main HTML structure
-│   ├── app.js             # Application logic, state management
-│   └── styles.css         # Dark theme styling
+│   ├── database.rs        # SQLite operations, migrations
+│   ├── clipboard.rs       # Clipboard auto-clear (45s timeout)
+│   └── bin/
+│       ├── vult.rs        # CLI binary
+│       └── vult-gui.rs    # GUI binary (Tauri)
+├── ui-sveltekit/          # Frontend (SvelteKit + Tailwind)
 ├── capabilities/          # Tauri capabilities (IPC allowlists)
 ├── gen/schemas/           # Generated Tauri schemas
-└── openspec/              # Spec-driven development (see below)
+└── openspec/              # Spec-driven development
 ```
 
 ## Key Technical Decisions

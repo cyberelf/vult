@@ -7,7 +7,7 @@ This file documents important bugs, mistakes, and lessons learned during develop
 ### The Bug
 Auto-lock functionality was completely broken due to an integer overflow bug in the activity counter.
 
-**Location**: `src/auth.rs`, `start_activity_counter()` method
+**Location**: `src/gui/auth_manager.rs`, `start_activity_counter()` method
 
 **Problematic Code**:
 ```rust

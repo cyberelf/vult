@@ -59,7 +59,7 @@ export interface ApiKey {
 
 /**
  * Represents the current authentication session state.
- * Matches the Rust SessionState struct from src/auth.rs
+ * Matches the Rust SessionState struct from src/gui/auth_manager.rs
  */
 export interface SessionState {
   /** Whether the vault is currently unlocked */

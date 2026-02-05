@@ -1,10 +1,11 @@
 //! Tauri commands for the vault
 //!
-//! These commands are called from the frontend.
+//! These commands are called from the frontend via Tauri IPC.
 
-use crate::auth::{AuthManager, validate_pin};
-use crate::database::{CreateApiKey, UpdateApiKey, VaultDb, ApiKey, ApiKeyWithSecret};
 use crate::clipboard::ClipboardManager;
+use crate::core::validate_pin;
+use crate::database::{ApiKey, ApiKeyWithSecret, CreateApiKey, UpdateApiKey, VaultDb};
+use super::AuthManager;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
@@ -83,7 +84,10 @@ pub async fn lock_vault(
 pub async fn get_auth_state(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<CommandResponse<AuthState>, String> {
-    let is_initialized = auth_manager.is_initialized().await.map_err(|e| e.to_string())?;
+    let is_initialized = auth_manager
+        .is_initialized()
+        .await
+        .map_err(|e| e.to_string())?;
     let is_unlocked = auth_manager.is_unlocked().await;
 
     Ok(CommandResponse::success(AuthState {
@@ -97,7 +101,10 @@ pub async fn get_auth_state(
 pub async fn is_initialized(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<bool, String> {
-    auth_manager.is_initialized().await.map_err(|e| e.to_string())
+    auth_manager
+        .is_initialized()
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Changes the PIN
@@ -122,7 +129,10 @@ pub async fn create_api_key(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
     db: tauri::State<'_, Arc<VaultDb>>,
 ) -> Result<CommandResponse<ApiKeyWithSecret>, String> {
-    let key = auth_manager.get_vault_key().await.map_err(|e| e.to_string())?;
+    let key = auth_manager
+        .get_vault_key()
+        .await
+        .map_err(|e| e.to_string())?;
     let result = db
         .create_api_key(input, &key)
         .await
@@ -137,7 +147,10 @@ pub async fn get_api_key(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
     db: tauri::State<'_, Arc<VaultDb>>,
 ) -> Result<CommandResponse<ApiKeyWithSecret>, String> {
-    let key = auth_manager.get_vault_key().await.map_err(|e| e.to_string())?;
+    let key = auth_manager
+        .get_vault_key()
+        .await
+        .map_err(|e| e.to_string())?;
     let result = db.get_api_key(&id, &key).await.map_err(|e| e.to_string())?;
     Ok(CommandResponse::success(result))
 }
@@ -176,7 +189,10 @@ pub async fn update_api_key(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
     db: tauri::State<'_, Arc<VaultDb>>,
 ) -> Result<CommandResponse<ApiKeyWithSecret>, String> {
-    let key = auth_manager.get_vault_key().await.map_err(|e| e.to_string())?;
+    let key = auth_manager
+        .get_vault_key()
+        .await
+        .map_err(|e| e.to_string())?;
     let result = db
         .update_api_key(input, &key)
         .await
@@ -191,7 +207,10 @@ pub async fn delete_api_key(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
     db: tauri::State<'_, Arc<VaultDb>>,
 ) -> Result<CommandResponse<()>, String> {
-    auth_manager.get_vault_key().await.map_err(|e| e.to_string())?;
+    auth_manager
+        .get_vault_key()
+        .await
+        .map_err(|e| e.to_string())?;
     db.delete_api_key(&id).await.map_err(|e| e.to_string())?;
     Ok(CommandResponse::success(()))
 }
@@ -204,7 +223,10 @@ pub async fn copy_to_clipboard(
     db: tauri::State<'_, Arc<VaultDb>>,
     clipboard: tauri::State<'_, Arc<ClipboardManager>>,
 ) -> Result<CommandResponse<String>, String> {
-    let key = auth_manager.get_vault_key().await.map_err(|e| e.to_string())?;
+    let key = auth_manager
+        .get_vault_key()
+        .await
+        .map_err(|e| e.to_string())?;
     let api_key = db.get_api_key(&id, &key).await.map_err(|e| e.to_string())?;
 
     clipboard
