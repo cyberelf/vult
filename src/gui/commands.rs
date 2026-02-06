@@ -1,11 +1,14 @@
 //! Tauri commands for the vault
 //!
-//! These commands are called from the frontend via Tauri IPC.
+//! These commands are thin adapters that call VaultManager services.
+//! They handle the Tauri IPC layer and convert between library types
+//! and frontend-friendly formats.
 
+use super::auth_manager::AuthManager;
 use crate::clipboard::ClipboardManager;
 use crate::core::validate_pin;
-use crate::database::{ApiKey, ApiKeyWithSecret, CreateApiKey, UpdateApiKey, VaultDb};
-use super::AuthManager;
+use crate::database::{ApiKey, ApiKeyWithSecret, CreateApiKey, UpdateApiKey};
+use crate::services::key_service::UpdateKeyRequest;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
@@ -42,6 +45,10 @@ pub struct AuthState {
     pub is_initialized: bool,
     pub is_unlocked: bool,
 }
+
+// =============================================================================
+// Authentication Commands
+// =============================================================================
 
 /// Initializes the vault with a new PIN
 #[tauri::command]
@@ -122,21 +129,54 @@ pub async fn change_pin(
     Ok(CommandResponse::success(()))
 }
 
+// =============================================================================
+// Key Management Commands (using VaultManager.keys() service)
+// =============================================================================
+
 /// Creates a new API key
 #[tauri::command]
 pub async fn create_api_key(
     input: CreateApiKey,
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
-    db: tauri::State<'_, Arc<VaultDb>>,
 ) -> Result<CommandResponse<ApiKeyWithSecret>, String> {
+    auth_manager.update_activity().await;
+    
+    // Create the key and get the ID
+    let id = auth_manager
+        .vault()
+        .keys()
+        .create(
+            input.app_name.as_deref(),
+            &input.key_name,
+            &input.key_value,
+            input.api_url.as_deref(),
+            input.description.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Fetch the created key to return full details
     let key = auth_manager
-        .get_vault_key()
+        .vault()
+        .keys()
+        .get_by_id(&id)
         .await
         .map_err(|e| e.to_string())?;
-    let result = db
-        .create_api_key(input, &key)
-        .await
-        .map_err(|e| e.to_string())?;
+
+    // Convert to ApiKeyWithSecret for frontend compatibility
+    let result = ApiKeyWithSecret {
+        api_key: ApiKey {
+            id: key.id,
+            app_name: key.app_name,
+            key_name: key.key_name,
+            api_url: key.api_url,
+            description: key.description,
+            created_at: key.created_at,
+            updated_at: key.updated_at,
+        },
+        key_value: key.key_value,
+    };
+
     Ok(CommandResponse::success(result))
 }
 
@@ -145,13 +185,29 @@ pub async fn create_api_key(
 pub async fn get_api_key(
     id: String,
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
-    db: tauri::State<'_, Arc<VaultDb>>,
 ) -> Result<CommandResponse<ApiKeyWithSecret>, String> {
+    auth_manager.update_activity().await;
+    
     let key = auth_manager
-        .get_vault_key()
+        .vault()
+        .keys()
+        .get_by_id(&id)
         .await
         .map_err(|e| e.to_string())?;
-    let result = db.get_api_key(&id, &key).await.map_err(|e| e.to_string())?;
+
+    let result = ApiKeyWithSecret {
+        api_key: ApiKey {
+            id: key.id,
+            app_name: key.app_name,
+            key_name: key.key_name,
+            api_url: key.api_url,
+            description: key.description,
+            created_at: key.created_at,
+            updated_at: key.updated_at,
+        },
+        key_value: key.key_value,
+    };
+
     Ok(CommandResponse::success(result))
 }
 
@@ -159,11 +215,30 @@ pub async fn get_api_key(
 #[tauri::command]
 pub async fn list_api_keys(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
-    db: tauri::State<'_, Arc<VaultDb>>,
 ) -> Result<CommandResponse<Vec<ApiKey>>, String> {
-    // Update activity to prevent auto-lock
     auth_manager.update_activity().await;
-    let result = db.list_api_keys().await.map_err(|e| e.to_string())?;
+    
+    let keys = auth_manager
+        .vault()
+        .keys()
+        .list()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Convert ApiKeyMetadata to ApiKey for frontend compatibility
+    let result: Vec<ApiKey> = keys
+        .into_iter()
+        .map(|m| ApiKey {
+            id: m.id,
+            app_name: m.app_name,
+            key_name: m.key_name,
+            api_url: m.api_url,
+            description: m.description,
+            created_at: m.created_at,
+            updated_at: m.updated_at,
+        })
+        .collect();
+
     Ok(CommandResponse::success(result))
 }
 
@@ -172,13 +247,29 @@ pub async fn list_api_keys(
 pub async fn search_api_keys(
     query: String,
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
-    db: tauri::State<'_, Arc<VaultDb>>,
 ) -> Result<CommandResponse<Vec<ApiKey>>, String> {
     auth_manager.update_activity().await;
-    let result = db
-        .search_api_keys(&query)
+    
+    let keys = auth_manager
+        .vault()
+        .keys()
+        .search(&query)
         .await
         .map_err(|e| e.to_string())?;
+
+    let result: Vec<ApiKey> = keys
+        .into_iter()
+        .map(|m| ApiKey {
+            id: m.id,
+            app_name: m.app_name,
+            key_name: m.key_name,
+            api_url: m.api_url,
+            description: m.description,
+            created_at: m.created_at,
+            updated_at: m.updated_at,
+        })
+        .collect();
+
     Ok(CommandResponse::success(result))
 }
 
@@ -187,16 +278,46 @@ pub async fn search_api_keys(
 pub async fn update_api_key(
     input: UpdateApiKey,
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
-    db: tauri::State<'_, Arc<VaultDb>>,
 ) -> Result<CommandResponse<ApiKeyWithSecret>, String> {
+    auth_manager.update_activity().await;
+    
+    // Build the update request from the frontend input
+    let request = UpdateKeyRequest {
+        app_name: input.app_name.map(Some),
+        key_name: input.key_name,
+        key_value: input.key_value,
+        api_url: input.api_url,
+        description: input.description,
+    };
+
+    auth_manager
+        .vault()
+        .keys()
+        .update(&input.id, request)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Fetch the updated key to return full details
     let key = auth_manager
-        .get_vault_key()
+        .vault()
+        .keys()
+        .get_by_id(&input.id)
         .await
         .map_err(|e| e.to_string())?;
-    let result = db
-        .update_api_key(input, &key)
-        .await
-        .map_err(|e| e.to_string())?;
+
+    let result = ApiKeyWithSecret {
+        api_key: ApiKey {
+            id: key.id,
+            app_name: key.app_name,
+            key_name: key.key_name,
+            api_url: key.api_url,
+            description: key.description,
+            created_at: key.created_at,
+            updated_at: key.updated_at,
+        },
+        key_value: key.key_value,
+    };
+
     Ok(CommandResponse::success(result))
 }
 
@@ -205,29 +326,38 @@ pub async fn update_api_key(
 pub async fn delete_api_key(
     id: String,
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
-    db: tauri::State<'_, Arc<VaultDb>>,
 ) -> Result<CommandResponse<()>, String> {
+    auth_manager.update_activity().await;
+    
     auth_manager
-        .get_vault_key()
+        .vault()
+        .keys()
+        .delete(&id)
         .await
         .map_err(|e| e.to_string())?;
-    db.delete_api_key(&id).await.map_err(|e| e.to_string())?;
+
     Ok(CommandResponse::success(()))
 }
+
+// =============================================================================
+// Clipboard Commands
+// =============================================================================
 
 /// Copies an API key to clipboard with auto-clear
 #[tauri::command]
 pub async fn copy_to_clipboard(
     id: String,
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
-    db: tauri::State<'_, Arc<VaultDb>>,
     clipboard: tauri::State<'_, Arc<ClipboardManager>>,
 ) -> Result<CommandResponse<String>, String> {
-    let key = auth_manager
-        .get_vault_key()
+    auth_manager.update_activity().await;
+    
+    let api_key = auth_manager
+        .vault()
+        .keys()
+        .get_by_id(&id)
         .await
         .map_err(|e| e.to_string())?;
-    let api_key = db.get_api_key(&id, &key).await.map_err(|e| e.to_string())?;
 
     clipboard
         .copy_with_timeout(api_key.key_value.clone(), Duration::from_secs(30))
@@ -235,6 +365,10 @@ pub async fn copy_to_clipboard(
 
     Ok(CommandResponse::success(api_key.key_value))
 }
+
+// =============================================================================
+// Activity Management Commands
+// =============================================================================
 
 /// Updates user activity (prevents auto-lock)
 #[tauri::command]

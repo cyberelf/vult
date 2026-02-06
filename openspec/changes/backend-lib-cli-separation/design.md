@@ -525,7 +525,9 @@ User → `vult get github token` → clap parse
 - **Invariant Verification**: Runtime checks in critical paths
 - **Memory Safety**: MIRI for undefined behavior detection
 - **Zeroization Verification**: Ensure sensitive data is cleared
-- **Formal Tools**: Consider Kani/Prusti for crypto module
+- **Formal Tools**:
+  - Use Verus for crypto module
+  - Use Kani for auth and storage modules
 
 ### Fuzz Testing
 - **CLI Input Fuzzing**: cargo-fuzz for argument parsing

@@ -304,16 +304,33 @@ async fn cmd_change_pin(db_url: &str) -> Result<(), VaultError> {
         return Err(VaultError::NotInitialized);
     }
 
-    let old_pin = read_pin("Current PIN: ").map_err(|e| VaultError::Io(e.to_string()))?;
+    // Support test environment variables for change-pin testing
+    let old_pin = if let Ok(pin) = std::env::var("VULT_OLD_PIN") {
+        eprintln!(
+            "{}: Using old PIN from VULT_OLD_PIN environment variable (test mode)",
+            "Warning".yellow().bold()
+        );
+        pin
+    } else {
+        read_pin("Current PIN: ").map_err(|e| VaultError::Io(e.to_string()))?
+    };
 
-    let new_pin = match read_pin_with_confirmation("New PIN (min 6 characters): ")
-        .map_err(|e| VaultError::Io(e.to_string()))?
-    {
-        Some(pin) => pin,
-        None => {
-            return Err(VaultError::InvalidInput(
-                "New PINs do not match".to_string(),
-            ))
+    let new_pin = if let Ok(pin) = std::env::var("VULT_NEW_PIN") {
+        eprintln!(
+            "{}: Using new PIN from VULT_NEW_PIN environment variable (test mode)",
+            "Warning".yellow().bold()
+        );
+        pin
+    } else {
+        match read_pin_with_confirmation("New PIN (min 6 characters): ")
+            .map_err(|e| VaultError::Io(e.to_string()))?
+        {
+            Some(pin) => pin,
+            None => {
+                return Err(VaultError::InvalidInput(
+                    "New PINs do not match".to_string(),
+                ))
+            }
         }
     };
 

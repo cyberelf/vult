@@ -1,6 +1,6 @@
 [package]
 name = "vult"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Secure API key vault with PIN authentication and AES-256-GCM encryption"
 license = "MIT"
@@ -41,6 +41,7 @@ thiserror = "2.0"
 arboard = "3.4"
 hex = "0.4"
 dirs = "5.0.1"
+base64 = "0.22"
 
 # GUI dependencies (optional, for vult-gui binary)
 tauri = { version = "2.1", features = ["devtools"], optional = true }
@@ -48,6 +49,7 @@ tauri-plugin-shell = { version = "2", optional = true }
 
 # CLI dependencies (optional, for vult binary)
 clap = { version = "4.5", features = ["derive", "env", "wrap_help"], optional = true }
+clap_complete = { version = "4.5", optional = true }
 dialoguer = { version = "0.11", optional = true }
 rpassword = { version = "7.3", optional = true }
 comfy-table = { version = "7.1", optional = true }
@@ -57,7 +59,7 @@ ctrlc = { version = "3.4", optional = true }
 [features]
 default = ["gui"]
 gui = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-build", "custom-protocol"]
-cli = ["dep:clap", "dep:dialoguer", "dep:rpassword", "dep:comfy-table", "dep:colored", "dep:ctrlc"]
+cli = ["dep:clap", "dep:clap_complete", "dep:dialoguer", "dep:rpassword", "dep:comfy-table", "dep:colored", "dep:ctrlc"]
 custom-protocol = ["tauri/custom-protocol"]
 
 # Development features
@@ -67,4 +69,6 @@ dev = ["gui", "cli"]
 proptest = "1.6"
 tempfile = "3.10"
 test-case = "3.3"
+assert_cmd = "2.0"
+predicates = "3.1"
 

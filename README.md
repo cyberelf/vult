@@ -140,11 +140,39 @@ The CLI provides full vault functionality from the terminal.
 
 ```bash
 # Build the CLI
-cargo build --release --no-default-features --features cli --bin vult
+cargo build --release --features cli --bin vult
 
-# Install (copy to PATH)
-cp target/release/vult ~/.local/bin/  # Linux
+# Linux/macOS - Install to local bin
+cp target/release/vult ~/.local/bin/
+
+# Windows - Copy to a directory in PATH
+# PowerShell:
+copy target\release\vult.exe $env:LOCALAPPDATA\Programs\
+# Or add target\release to your PATH
+
+# Verify installation
+vult --version
 ```
+
+#### Building Both Binaries
+
+```bash
+# Build everything (library + CLI + GUI)
+cargo build --release --features "cli gui"
+
+# GUI binary is at: target/release/vult-gui
+# CLI binary is at: target/release/vult
+```
+
+#### Platform-Specific Notes
+
+**Linux:**
+- Session files stored in `/tmp/vult-session-<uid>`
+- Database at `~/.vult/vault.db`
+
+**Windows:**
+- Session files stored in `%TEMP%\vult-session`
+- Database at `%USERPROFILE%\.vult\vault.db`
 
 #### Commands
 
@@ -186,15 +214,43 @@ vult status
 #### Global Options
 
 ```bash
---json           # Output in JSON format
---db-path PATH   # Use custom database path
+--json             # Output in JSON format
+--db-path PATH     # Use custom database path
+--stay-unlocked    # Keep vault unlocked for 5 minutes (session mode)
 ```
+
+#### Session Mode (--stay-unlocked)
+
+By default, each CLI command requires PIN entry. Use `--stay-unlocked` to create
+a session that persists for 5 minutes:
+
+```bash
+# First command creates session
+vult get mykey --stay-unlocked
+
+# Subsequent commands use existing session (no PIN needed)
+vult list
+vult get another-key
+
+# Lock vault to clear session
+vult lock
+```
+
+**Security notes:**
+- Session tokens stored in temp directory with restricted permissions (0600)
+- Sessions auto-expire after 5 minutes
+- Ctrl+C automatically clears the session
+- Use `vult lock` to explicitly end a session
 
 #### Environment Variables
 
 ```bash
 VULT_DB_PATH     # Custom database path (default: ~/.vult/vault.db)
+VULT_PIN         # PIN for non-interactive use (CAUTION: insecure)
 ```
+
+**Warning:** Using `VULT_PIN` is insecure as it may appear in process listings.
+Use only in controlled environments (CI/CD, containers).
 
 #### Exit Codes
 
@@ -209,6 +265,24 @@ VULT_DB_PATH     # Custom database path (default: ~/.vult/vault.db)
 | 6 | Encryption error |
 | 7 | Database error |
 | 8 | I/O error |
+
+#### Shell Completions
+
+Generate shell completion scripts for your shell:
+
+```bash
+# Bash
+vult completions bash > ~/.local/share/bash-completion/completions/vult
+
+# Zsh
+vult completions zsh > ~/.zfunc/_vult
+
+# Fish
+vult completions fish > ~/.config/fish/completions/vult.fish
+
+# PowerShell
+vult completions powershell > _vult.ps1
+```
 
 ## Development
 

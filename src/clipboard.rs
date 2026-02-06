@@ -16,8 +16,20 @@
 //! - Original clipboard content is restored when possible
 //! - Prevents sensitive data from lingering in clipboard
 //!
-//! # Example
+//! # Library Functions
 //!
+//! For simple one-shot clipboard operations (CLI, library use):
+//! ```rust,ignore
+//! use vult::clipboard::{copy_to_clipboard, clear_clipboard};
+//!
+//! copy_to_clipboard("secret")?;
+//! // Later...
+//! clear_clipboard()?;
+//! ```
+//!
+//! # GUI Manager
+//!
+//! For GUI applications needing persistent auto-clear:
 //! ```rust,ignore
 //! use vult::clipboard::ClipboardManager;
 //! use std::time::Duration;
@@ -28,7 +40,7 @@
 //! manager.copy_with_timeout("secret".to_string(), Duration::from_secs(45)).await;
 //!
 //! // Start background clearing task
-//! manager.start_auto_clear();
+//! manager.start_auto_clear_checker();
 //! ```
 
 use arboard::Clipboard;
@@ -36,6 +48,80 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::{interval, Instant};
+
+use crate::VaultError;
+
+// ============================================================================
+// Simple Library Functions (for CLI and library use)
+// ============================================================================
+
+/// Copy text to system clipboard.
+///
+/// This is a simple synchronous copy operation for CLI and library use.
+/// For GUI applications with auto-clear, use `ClipboardManager` instead.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use vult::clipboard::copy_to_clipboard;
+///
+/// copy_to_clipboard("my-api-key")?;
+/// ```
+pub fn copy_to_clipboard(text: &str) -> Result<(), VaultError> {
+    let mut clipboard = Clipboard::new()
+        .map_err(|e| VaultError::Clipboard(format!("Failed to access clipboard: {}", e)))?;
+    clipboard
+        .set_text(text)
+        .map_err(|e| VaultError::Clipboard(format!("Failed to copy to clipboard: {}", e)))?;
+    Ok(())
+}
+
+/// Clear the system clipboard.
+///
+/// Sets the clipboard content to an empty string.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use vult::clipboard::clear_clipboard;
+///
+/// clear_clipboard()?;
+/// ```
+pub fn clear_clipboard() -> Result<(), VaultError> {
+    let mut clipboard = Clipboard::new()
+        .map_err(|e| VaultError::Clipboard(format!("Failed to access clipboard: {}", e)))?;
+    clipboard
+        .set_text("")
+        .map_err(|e| VaultError::Clipboard(format!("Failed to clear clipboard: {}", e)))?;
+    Ok(())
+}
+
+/// Get current clipboard text content.
+///
+/// Returns None if clipboard is empty or contains non-text data.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use vult::clipboard::get_clipboard_text;
+///
+/// if let Some(text) = get_clipboard_text()? {
+///     println!("Clipboard contains: {}", text);
+/// }
+/// ```
+pub fn get_clipboard_text() -> Result<Option<String>, VaultError> {
+    let mut clipboard = Clipboard::new()
+        .map_err(|e| VaultError::Clipboard(format!("Failed to access clipboard: {}", e)))?;
+    match clipboard.get_text() {
+        Ok(text) if !text.is_empty() => Ok(Some(text)),
+        Ok(_) => Ok(None),
+        Err(_) => Ok(None), // Non-text content returns None
+    }
+}
+
+// ============================================================================
+// ClipboardManager (for GUI with auto-clear)
+// ============================================================================
 
 /// Clipboard manager that auto-clears after a timeout
 pub struct ClipboardManager {

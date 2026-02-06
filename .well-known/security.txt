@@ -1,0 +1,53 @@
+# Security Policy
+
+# Reporting Security Vulnerabilities
+
+If you discover a security vulnerability in Vult, please report it responsibly.
+
+Contact: https://github.com/cyberelf/vult/security/advisories/new
+Preferred-Languages: en
+
+# Policy
+
+- We take all security vulnerabilities seriously
+- We will respond to security reports within 48 hours
+- We will work with you to understand the issue and find a solution
+- We request that you do not publicly disclose the vulnerability until we have had a chance to address it
+
+# Scope
+
+In scope:
+- Authentication bypass
+- Encryption vulnerabilities  
+- Data exposure vulnerabilities
+- PIN/password security issues
+- Session management vulnerabilities
+- SQL injection or command injection
+- Path traversal or file access vulnerabilities
+- Dependency vulnerabilities with exploits
+
+Out of scope:
+- Social engineering attacks
+- Physical access attacks
+- Denial of service without security impact
+- Issues in dependencies without a clear exploit path
+
+# Safe Harbor
+
+We support security research conducted in good faith:
+- Do not access, modify, or delete data that is not your own
+- Do not perform testing on production systems
+- Do not conduct testing that degrades service for other users
+
+# Recognition
+
+We appreciate responsible disclosure and will acknowledge security researchers who report valid vulnerabilities (with your permission).
+
+# Encryption Notice
+
+Vult uses:
+- AES-256-GCM for data encryption
+- Argon2id for key derivation
+- Per-key encryption with unique salts
+
+All cryptographic implementations use well-tested third-party crates from crates.io.

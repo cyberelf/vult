@@ -39,7 +39,7 @@
 
 mod auth_service;
 mod crypto_service;
-mod key_service;
+pub mod key_service;
 mod vault_manager;
 
 // Re-export main types

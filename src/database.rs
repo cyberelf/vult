@@ -125,17 +125,17 @@ pub struct UpdateApiKey {
 }
 
 /// Database row for encrypted API key storage
-struct EncryptedApiKeyRow {
-    id: String,
-    app_name: Option<String>,
-    key_name: String,
-    api_url: Option<String>,
-    description: Option<String>,
-    encrypted_key_value: Vec<u8>,
-    nonce: Vec<u8>,
-    key_salt: Vec<u8>, // Per-key salt for deriving encryption key
-    created_at: i64,
-    updated_at: i64,
+pub struct EncryptedApiKeyRow {
+    pub id: String,
+    pub app_name: Option<String>,
+    pub key_name: String,
+    pub api_url: Option<String>,
+    pub description: Option<String>,
+    pub encrypted_key_value: Vec<u8>,
+    pub nonce: Vec<u8>,
+    pub key_salt: Vec<u8>, // Per-key salt for deriving encryption key
+    pub created_at: i64,
+    pub updated_at: i64,
 }
 
 impl FromRow<'_, SqliteRow> for EncryptedApiKeyRow {
@@ -862,6 +862,86 @@ impl VaultDb {
             None => Ok(1), // Default version if no version table
         }
     }
+
+    // =========================================================================
+    // Transaction Support
+    // =========================================================================
+
+    /// Begins a new database transaction.
+    ///
+    /// Returns a transaction that can be used to execute multiple operations
+    /// atomically. The transaction must be committed with `commit()` or it
+    /// will be rolled back when dropped.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let mut tx = db.begin_transaction().await?;
+    /// // Perform operations using tx...
+    /// tx.commit().await?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the transaction cannot be started.
+    pub async fn begin_transaction(
+        &self,
+    ) -> Result<sqlx::Transaction<'static, Sqlite>> {
+        self.pool
+            .begin()
+            .await
+            .map_err(DbError::Database)
+    }
+
+    /// Executes a closure within a transaction.
+    ///
+    /// This is a convenience method that handles transaction lifecycle
+    /// automatically. If the closure returns `Ok`, the transaction is committed.
+    /// If it returns `Err` or panics, the transaction is rolled back.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - An async closure that receives a mutable reference to the transaction
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let result = db.with_transaction(|tx| async move {
+    ///     sqlx::query("INSERT INTO ...").execute(&mut *tx).await?;
+    ///     sqlx::query("UPDATE ...").execute(&mut *tx).await?;
+    ///     Ok(())
+    /// }).await?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns the error from the closure if it fails, or a database error
+    /// if commit fails.
+    pub async fn with_transaction<F, Fut, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(sqlx::Transaction<'static, Sqlite>) -> Fut,
+        Fut: std::future::Future<Output = Result<(T, sqlx::Transaction<'static, Sqlite>)>>,
+    {
+        let tx = self.begin_transaction().await?;
+        let (result, tx) = f(tx).await?;
+        tx.commit().await.map_err(DbError::Database)?;
+        Ok(result)
+    }
+
+    /// Returns a reference to the underlying connection pool.
+    ///
+    /// This is useful for advanced operations that need direct pool access,
+    /// such as running raw SQL queries or using pool-specific features.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let pool = db.pool();
+    /// sqlx::query("SELECT 1").execute(pool).await?;
+    /// ```
+    pub fn pool(&self) -> &Pool<Sqlite> {
+        &self.pool
+    }
 }
 
 #[cfg(test)]
@@ -1419,7 +1499,7 @@ mod tests {
         // Let's verify that after a new migration call, the table is gone
 
         // Create another test db that will trigger cleanup on init
-        let db2 = VaultDb::new("sqlite::memory:").await.unwrap();
+        let _db2 = VaultDb::new("sqlite::memory:").await.unwrap();
 
         // The orphaned table should have been cleaned up in the original db's migrate
         // Actually, since they're different in-memory databases, let's check the original

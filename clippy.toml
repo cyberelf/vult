@@ -1,0 +1,26 @@
+# Clippy configuration for the Vult project
+# See: https://doc.rust-lang.org/clippy/configuration.html
+
+# Set minimum MSRV for compatibility checks
+msrv = "1.75.0"
+
+# Enforce documentation on public items
+missing-docs-in-crate-items = true
+
+# Cognitive complexity threshold before warning
+cognitive-complexity-threshold = 25
+
+# Type complexity threshold
+type-complexity-threshold = 300
+
+# Maximum lines per function before warning
+too-many-lines-threshold = 100
+
+# Maximum number of arguments per function
+too-many-arguments-threshold = 7
+
+# Allow common short names in small scopes
+allowed-idents-below-min-chars = ["i", "j", "k", "n", "x", "y", "id", "db", "tx"]
+
+# Single char bindings threshold (0 means always warn, higher means allow in small scopes)
+min-ident-chars-threshold = 2

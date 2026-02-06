@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use vult::clipboard::ClipboardManager;
-use vult::database::VaultDb;
 use vult::gui::{commands, AuthManager};
+use vult::services::VaultManager;
 
 /// Get the default vault database path.
 ///
@@ -41,15 +41,17 @@ async fn main() {
 
     eprintln!("Database path: {}", db_path);
 
-    let db = Arc::new(
-        VaultDb::new(&db_path)
+    // Initialize VaultManager - the main entry point for vault operations
+    let vault = Arc::new(
+        VaultManager::new(&db_path)
             .await
-            .expect("Failed to initialize vault database"),
+            .expect("Failed to initialize vault"),
     );
 
     // Initialize authentication manager with 5-minute auto-lock
+    // This wraps VaultManager and adds GUI-specific features (auto-lock, events)
     let auth_manager = Arc::new(AuthManager::new(
-        Arc::clone(&db),
+        Arc::clone(&vault),
         Some(tokio::time::Duration::from_secs(300)),
     ));
 
@@ -65,7 +67,6 @@ async fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .manage(db)
         .manage(auth_manager)
         .manage(clipboard_manager)
         .invoke_handler(tauri::generate_handler![

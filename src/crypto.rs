@@ -105,11 +105,15 @@ pub type Result<T> = std::result::Result<T, CryptoError>;
 /// - Parallelism: 4
 /// - Output length: 256 bits
 pub fn derive_key_from_pin(pin: &str, salt: &[u8; 32]) -> Result<VaultKey> {
+    // Invariant: PIN must meet minimum length requirement
     if pin.len() < 6 {
         return Err(CryptoError::KeyDerivation(
             "PIN must be at least 6 characters".to_string(),
         ));
     }
+
+    // Invariant: Salt must be exactly 32 bytes
+    debug_assert_eq!(salt.len(), 32, "Salt must be exactly 32 bytes");
 
     // Argon2id parameters for high security
     let params = Params::new(65536, 3, 4, Some(32))
@@ -130,13 +134,21 @@ pub fn derive_key_from_pin(pin: &str, salt: &[u8; 32]) -> Result<VaultKey> {
     let hash_output = password_hash.hash.unwrap();
     let hash_bytes = hash_output.as_bytes();
 
+    // Invariant: Argon2 output must be at least 32 bytes
     if hash_bytes.len() < 32 {
         return Err(CryptoError::InvalidKeyLength);
     }
+    debug_assert!(hash_bytes.len() >= 32, "Argon2 output must be at least 32 bytes");
 
     // Take first 32 bytes as our key
     let mut key_array = [0u8; 32];
     key_array.copy_from_slice(&hash_bytes[..32]);
+
+    // Invariant: Derived key must not be all zeros
+    debug_assert!(
+        !key_array.iter().all(|&b| b == 0),
+        "Derived key must not be all zeros"
+    );
 
     Ok(VaultKey(key_array))
 }
@@ -157,12 +169,24 @@ pub fn generate_salt() -> [u8; 32] {
 /// # Returns
 /// Encrypted data with nonce for later decryption
 pub fn encrypt(plaintext: &[u8], key: &VaultKey) -> Result<EncryptedData> {
+    // Invariant: Key must be exactly 32 bytes
+    debug_assert_eq!(key.as_bytes().len(), 32, "VaultKey must be 32 bytes");
+    
     let cipher = Aes256Gcm::new(key.as_bytes().into());
     let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+
+    // Invariant: Generated nonce must be exactly 12 bytes
+    debug_assert_eq!(nonce.len(), 12, "AES-GCM nonce must be 12 bytes");
 
     let ciphertext = cipher
         .encrypt(&nonce, plaintext)
         .map_err(|e| CryptoError::Encryption(e.to_string()))?;
+
+    // Invariant: Ciphertext should be larger than plaintext (includes auth tag)
+    debug_assert!(
+        ciphertext.len() >= plaintext.len(),
+        "Ciphertext should include authentication tag"
+    );
 
     Ok(EncryptedData {
         ciphertext,
@@ -179,9 +203,16 @@ pub fn encrypt(plaintext: &[u8], key: &VaultKey) -> Result<EncryptedData> {
 /// # Returns
 /// The decrypted plaintext
 pub fn decrypt(encrypted: &EncryptedData, key: &VaultKey) -> Result<Vec<u8>> {
+    // Invariant: Key must be exactly 32 bytes
+    debug_assert_eq!(key.as_bytes().len(), 32, "VaultKey must be 32 bytes");
+    
+    // Invariant: Nonce must be exactly 12 bytes for AES-GCM
     if encrypted.nonce.len() != 12 {
         return Err(CryptoError::InvalidNonceLength);
     }
+
+    // Invariant: Ciphertext must not be empty
+    debug_assert!(!encrypted.ciphertext.is_empty(), "Ciphertext cannot be empty");
 
     let mut nonce_array = [0u8; 12];
     nonce_array.copy_from_slice(&encrypted.nonce);
@@ -223,6 +254,15 @@ pub fn derive_per_key_encryption_key(
     key_name: &str,
     salt: &[u8; 32],
 ) -> Result<VaultKey> {
+    // Invariant: Master key must be 32 bytes
+    debug_assert_eq!(master_key.as_bytes().len(), 32, "Master key must be 32 bytes");
+    
+    // Invariant: Salt must be exactly 32 bytes
+    debug_assert_eq!(salt.len(), 32, "Per-key salt must be 32 bytes");
+    
+    // Invariant: Key name must not be empty (app_name can be empty)
+    debug_assert!(!key_name.is_empty(), "Key name cannot be empty");
+    
     // Create context string from key metadata
     let context = format!("{}|{}", app_name, key_name);
 
@@ -249,12 +289,20 @@ pub fn derive_per_key_encryption_key(
     let hash_output = password_hash.hash.unwrap();
     let hash_bytes = hash_output.as_bytes();
 
+    // Invariant: Derived key must be at least 32 bytes
     if hash_bytes.len() < 32 {
         return Err(CryptoError::InvalidKeyLength);
     }
+    debug_assert!(hash_bytes.len() >= 32, "Derived key must be at least 32 bytes");
 
     let mut key_array = [0u8; 32];
     key_array.copy_from_slice(&hash_bytes[..32]);
+
+    // Invariant: Derived per-key key must not be all zeros
+    debug_assert!(
+        !key_array.iter().all(|&b| b == 0),
+        "Derived per-key key must not be all zeros"
+    );
 
     Ok(VaultKey(key_array))
 }

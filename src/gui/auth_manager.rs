@@ -1,20 +1,24 @@
 //! GUI-specific authentication manager with auto-lock and event emission.
 //!
 //! This module provides the `AuthManager` for the Tauri GUI binary.
+//! It wraps [`crate::services::VaultManager`] and adds GUI-specific features:
+//! - Activity tracking for auto-lock
+//! - Tauri event emission on lock
+//! - Background activity counter
+//!
 //! For CLI or library use, see [`crate::services::AuthService`].
 
-use crate::core::{DEFAULT_AUTO_LOCK_DURATION, MAX_PIN_LENGTH, MIN_PIN_LENGTH};
-use crate::crypto::{derive_key_from_pin, generate_salt, VaultKey};
-use crate::database::VaultDb;
+use crate::core::DEFAULT_AUTO_LOCK_DURATION;
+use crate::crypto::VaultKey;
+use crate::services::VaultManager;
 use serde::{Deserialize, Serialize};
-use sqlx::Row;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tauri::Emitter;
 use thiserror::Error;
 use tokio::sync::RwLock;
 
-/// Errors related to authentication operations
+/// Errors related to GUI authentication operations
 #[derive(Error, Debug)]
 pub enum AuthError {
     #[error("Database error: {0}")]
@@ -29,11 +33,17 @@ pub enum AuthError {
     #[error("PIN too short (minimum 6 characters)")]
     PinTooShort,
 
+    #[error("PIN too long")]
+    PinTooLong,
+
     #[error("Vault not initialized")]
     NotInitialized,
 
     #[error("Vault already initialized")]
     AlreadyInitialized,
+
+    #[error("Vault is locked")]
+    Locked,
 
     #[error("Too many failed attempts")]
     TooManyAttempts,
@@ -41,6 +51,25 @@ pub enum AuthError {
 
 /// Result type for authentication operations
 pub type Result<T> = std::result::Result<T, AuthError>;
+
+impl From<crate::error::VaultError> for AuthError {
+    fn from(e: crate::error::VaultError) -> Self {
+        match e {
+            crate::error::VaultError::InvalidPin => AuthError::InvalidPin,
+            crate::error::VaultError::PinTooShort => AuthError::PinTooShort,
+            crate::error::VaultError::PinTooLong => AuthError::PinTooLong,
+            crate::error::VaultError::NotInitialized => AuthError::NotInitialized,
+            crate::error::VaultError::AlreadyInitialized => AuthError::AlreadyInitialized,
+            crate::error::VaultError::Locked => AuthError::Locked,
+            crate::error::VaultError::TooManyAttempts => AuthError::TooManyAttempts,
+            crate::error::VaultError::Database(s) => AuthError::Database(s),
+            crate::error::VaultError::Encryption(s) => AuthError::Crypto(s),
+            crate::error::VaultError::Decryption(s) => AuthError::Crypto(s),
+            crate::error::VaultError::KeyDerivation(s) => AuthError::Crypto(s),
+            e => AuthError::Database(e.to_string()),
+        }
+    }
+}
 
 /// Authentication session state
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,7 +79,7 @@ pub struct SessionState {
 }
 
 impl SessionState {
-    pub fn new(is_unlocked: bool, _last_activity: Instant) -> Self {
+    pub fn new(is_unlocked: bool) -> Self {
         Self {
             is_unlocked,
             last_activity_secs: 0,
@@ -58,158 +87,68 @@ impl SessionState {
     }
 }
 
-/// GUI Authentication manager with auto-lock and Tauri event support.
+/// GUI Authentication manager - wraps VaultManager with GUI-specific features.
 ///
 /// This manager is designed for the Tauri GUI binary and includes:
 /// - Activity tracking for auto-lock
 /// - Tauri event emission on lock
 /// - Background activity counter
 ///
-/// For CLI or library use, see [`crate::services::AuthService`].
+/// Internally, it delegates to [`crate::services::VaultManager`] for all
+/// vault operations, ensuring consistent behavior with the library.
 pub struct AuthManager {
-    db: Arc<VaultDb>,
-    vault_key: Arc<RwLock<Option<VaultKey>>>,
+    /// The underlying vault manager
+    vault: Arc<VaultManager>,
+    /// Session state with activity tracking
     session_state: Arc<RwLock<SessionState>>,
-    failed_attempts: Arc<RwLock<u32>>,
+    /// Auto-lock duration
     auto_lock_duration: Duration,
 }
 
 impl AuthManager {
-    /// Creates a new authentication manager
-    pub fn new(db: Arc<VaultDb>, auto_lock_duration: Option<Duration>) -> Self {
+    /// Creates a new authentication manager wrapping a VaultManager.
+    ///
+    /// # Arguments
+    ///
+    /// * `vault` - The vault manager to wrap
+    /// * `auto_lock_duration` - Duration of inactivity before auto-lock (default: 5 minutes)
+    pub fn new(vault: Arc<VaultManager>, auto_lock_duration: Option<Duration>) -> Self {
         Self {
-            db,
-            vault_key: Arc::new(RwLock::new(None)),
-            session_state: Arc::new(RwLock::new(SessionState {
-                is_unlocked: false,
-                last_activity_secs: 0,
-            })),
-            failed_attempts: Arc::new(RwLock::new(0)),
+            vault,
+            session_state: Arc::new(RwLock::new(SessionState::new(false))),
             auto_lock_duration: auto_lock_duration.unwrap_or(DEFAULT_AUTO_LOCK_DURATION),
         }
     }
 
+    /// Returns a reference to the underlying VaultManager.
+    ///
+    /// Use this to access key operations, crypto services, etc.
+    pub fn vault(&self) -> &VaultManager {
+        &self.vault
+    }
+
     /// Checks if the vault is initialized
     pub async fn is_initialized(&self) -> Result<bool> {
-        let pool = &self.db.pool;
-
-        let result = sqlx::query(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='vault_config'",
-        )
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AuthError::Database(e.to_string()))?;
-
-        Ok(result.is_some())
+        self.vault.is_initialized().await.map_err(AuthError::from)
     }
 
     /// Initializes the vault with a new PIN
     pub async fn initialize(&self, pin: &str) -> Result<()> {
-        if pin.len() < MIN_PIN_LENGTH {
-            return Err(AuthError::PinTooShort);
-        }
-        if pin.len() > MAX_PIN_LENGTH {
-            return Err(AuthError::InvalidPin);
-        }
-
-        // Check if already initialized
-        if self.is_initialized().await? {
-            return Err(AuthError::AlreadyInitialized);
-        }
-
-        // Generate salt and derive key
-        let salt = generate_salt();
-        let vault_key =
-            derive_key_from_pin(pin, &salt).map_err(|e| AuthError::Crypto(e.to_string()))?;
-
-        // Store PIN hash (simplified - using first byte for verification)
-        let salt_hex = hex::encode(salt);
-        let first_byte = vault_key.as_bytes()[0];
-        let pin_hash = format!("${}:{first_byte}", salt_hex);
-
-        // Create vault config table
-        let pool = &self.db.pool;
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS vault_config (
-                id INTEGER PRIMARY KEY,
-                salt BLOB NOT NULL,
-                pin_hash TEXT NOT NULL,
-                created_at INTEGER NOT NULL
-            );
-            "#,
-        )
-        .execute(pool)
-        .await
-        .map_err(|e| AuthError::Database(e.to_string()))?;
-
-        // Insert config
-        sqlx::query(
-            "INSERT INTO vault_config (id, salt, pin_hash, created_at) VALUES (1, ?1, ?2, ?3)",
-        )
-        .bind(salt.as_slice())
-        .bind(&pin_hash)
-        .bind(chrono::Utc::now().timestamp())
-        .execute(pool)
-        .await
-        .map_err(|e| AuthError::Database(e.to_string()))?;
-
-        // Auto-unlock after initialization
-        *self.vault_key.write().await = Some(vault_key);
+        self.vault.auth().init_vault(pin).await.map_err(AuthError::from)?;
         self.update_state_unlocked().await;
-
         Ok(())
     }
 
     /// Unlocks the vault with a PIN
     pub async fn unlock(&self, pin: &str) -> Result<()> {
-        // Check rate limiting
-        let attempts = *self.failed_attempts.read().await;
-        if attempts > 0 {
-            let backoff = 2_u64.pow(attempts.min(5));
-            tokio::time::sleep(Duration::from_secs(backoff)).await;
-        }
-
-        // Get stored config
-        let pool = &self.db.pool;
-        let row = sqlx::query("SELECT salt, pin_hash FROM vault_config WHERE id = 1")
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| AuthError::Database(e.to_string()))?
-            .ok_or(AuthError::NotInitialized)?;
-
-        let salt: Vec<u8> = row.get("salt");
-        let mut salt_array = [0u8; 32];
-        salt_array.copy_from_slice(&salt);
-
-        // Derive key from PIN
-        let vault_key =
-            derive_key_from_pin(pin, &salt_array).map_err(|e| AuthError::Crypto(e.to_string()))?;
-
-        // Verify by checking first byte
-        let stored_hash: String = row.get("pin_hash");
-        let parts: Vec<&str> = stored_hash.split(':').collect();
-        let expected_byte = parts
-            .get(1)
-            .and_then(|s| s.parse::<u8>().ok())
-            .unwrap_or(255);
-
-        if vault_key.as_bytes()[0] != expected_byte {
-            *self.failed_attempts.write().await += 1;
-            return Err(AuthError::InvalidPin);
-        }
-
-        // Reset failed attempts and unlock
-        *self.failed_attempts.write().await = 0;
-        *self.vault_key.write().await = Some(vault_key);
+        self.vault.auth().unlock(pin).await.map_err(AuthError::from)?;
         self.update_state_unlocked().await;
-
         Ok(())
     }
 
     /// Locks the vault
     pub async fn lock(&self) -> Result<()> {
-        *self.vault_key.write().await = None;
+        self.vault.auth().lock().await.map_err(AuthError::from)?;
         let mut state = self.session_state.write().await;
         state.is_unlocked = false;
         state.last_activity_secs = 0;
@@ -225,8 +164,7 @@ impl AuthManager {
 
     /// Checks if the vault is unlocked
     pub async fn is_unlocked(&self) -> bool {
-        let state = self.session_state.read().await;
-        state.is_unlocked
+        self.vault.is_unlocked()
     }
 
     /// Updates activity timestamp (call on user activity)
@@ -247,49 +185,29 @@ impl AuthManager {
 
     /// Gets the vault key (returns error if locked)
     pub async fn get_vault_key(&self) -> Result<VaultKey> {
-        let key_guard = self.vault_key.read().await;
-        key_guard.as_ref().cloned().ok_or(AuthError::InvalidPin)
+        self.vault
+            .auth()
+            .get_vault_key()
+            .await
+            .map_err(AuthError::from)
     }
 
     /// Gets the current session state
     pub async fn get_session_state(&self) -> SessionState {
         let state = self.session_state.read().await;
         SessionState {
-            is_unlocked: state.is_unlocked,
+            is_unlocked: self.vault.is_unlocked(),
             last_activity_secs: state.last_activity_secs,
         }
     }
 
     /// Changes the PIN
     pub async fn change_pin(&self, old_pin: &str, new_pin: &str) -> Result<()> {
-        if new_pin.len() < MIN_PIN_LENGTH {
-            return Err(AuthError::PinTooShort);
-        }
-
-        // Verify old PIN first
-        self.unlock(old_pin).await?;
-
-        // Generate new salt and key
-        let new_salt = generate_salt();
-        let new_vault_key = derive_key_from_pin(new_pin, &new_salt)
-            .map_err(|e| AuthError::Crypto(e.to_string()))?;
-
-        let new_salt_hex = hex::encode(new_salt);
-        let new_pin_hash = format!("${new_salt_hex}:{}", new_vault_key.as_bytes()[0]);
-
-        // Update config
-        let pool = &self.db.pool;
-        sqlx::query("UPDATE vault_config SET salt = ?1, pin_hash = ?2 WHERE id = 1")
-            .bind(new_salt.as_slice())
-            .bind(&new_pin_hash)
-            .execute(pool)
+        self.vault
+            .auth()
+            .change_pin(old_pin, new_pin)
             .await
-            .map_err(|e| AuthError::Database(e.to_string()))?;
-
-        // Update current key
-        *self.vault_key.write().await = Some(new_vault_key);
-
-        Ok(())
+            .map_err(AuthError::from)
     }
 
     /// Updates session state to unlocked
@@ -302,12 +220,14 @@ impl AuthManager {
     /// Starts a background task to increment activity counter
     pub fn start_activity_counter(&self) {
         let state = Arc::clone(&self.session_state);
+        let vault = Arc::clone(&self.vault);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
                 interval.tick().await;
                 let mut s = state.write().await;
-                if s.is_unlocked && s.last_activity_secs < i64::MAX {
+                // Only increment if the vault is actually unlocked
+                if vault.is_unlocked() && s.last_activity_secs < i64::MAX {
                     s.last_activity_secs += 1;
                 }
             }

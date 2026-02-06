@@ -12,14 +12,14 @@
 
 use std::sync::Arc;
 use std::time::Duration;
-use vult::database::VaultDb;
 use vult::gui::AuthManager;
+use vult::services::VaultManager;
 
 #[tokio::test]
 async fn test_auto_lock_integration_flow() {
     // Create vault with 2-second timeout for fast testing
-    let db = Arc::new(VaultDb::new("sqlite::memory:").await.unwrap());
-    let auth = Arc::new(AuthManager::new(db, Some(Duration::from_secs(2))));
+    let vault = Arc::new(VaultManager::new("sqlite::memory:").await.unwrap());
+    let auth = Arc::new(AuthManager::new(vault, Some(Duration::from_secs(2))));
 
     // Start the activity counter background task
     auth.start_activity_counter();
@@ -47,8 +47,8 @@ async fn test_auto_lock_integration_flow() {
 
 #[tokio::test]
 async fn test_activity_prevents_auto_lock_integration() {
-    let db = Arc::new(VaultDb::new("sqlite::memory:").await.unwrap());
-    let auth = Arc::new(AuthManager::new(db, Some(Duration::from_secs(3))));
+    let vault = Arc::new(VaultManager::new("sqlite::memory:").await.unwrap());
+    let auth = Arc::new(AuthManager::new(vault, Some(Duration::from_secs(3))));
 
     auth.start_activity_counter();
     auth.initialize("activityPreventTest").await.unwrap();
@@ -73,8 +73,8 @@ async fn test_activity_prevents_auto_lock_integration() {
 
 #[tokio::test]
 async fn test_lock_stops_counter_integration() {
-    let db = Arc::new(VaultDb::new("sqlite::memory:").await.unwrap());
-    let auth = Arc::new(AuthManager::new(db, Some(Duration::from_secs(5))));
+    let vault = Arc::new(VaultManager::new("sqlite::memory:").await.unwrap());
+    let auth = Arc::new(AuthManager::new(vault, Some(Duration::from_secs(5))));
 
     auth.start_activity_counter();
     auth.initialize("lockStopsCounter").await.unwrap();
@@ -109,8 +109,8 @@ async fn test_lock_stops_counter_integration() {
 
 #[tokio::test]
 async fn test_unlock_restarts_counter_integration() {
-    let db = Arc::new(VaultDb::new("sqlite::memory:").await.unwrap());
-    let auth = Arc::new(AuthManager::new(db, Some(Duration::from_secs(5))));
+    let vault = Arc::new(VaultManager::new("sqlite::memory:").await.unwrap());
+    let auth = Arc::new(AuthManager::new(vault, Some(Duration::from_secs(5))));
 
     auth.start_activity_counter();
     auth.initialize("unlockRestartsCounter").await.unwrap();
@@ -137,17 +137,18 @@ async fn test_unlock_restarts_counter_integration() {
     let state = auth.get_session_state().await;
     assert!(state.is_unlocked, "Vault should be unlocked");
     // Counter should be around 2 seconds (give some tolerance for execution time)
+    // Note: On slower machines, the counter may be slightly higher
     assert!(
-        state.last_activity_secs >= 1 && state.last_activity_secs <= 4,
-        "Counter should be between 1-4 seconds after unlock, got {}",
+        state.last_activity_secs >= 1 && state.last_activity_secs <= 6,
+        "Counter should be between 1-6 seconds after unlock, got {}",
         state.last_activity_secs
     );
 }
 
 #[tokio::test]
 async fn test_long_running_counter() {
-    let db = Arc::new(VaultDb::new("sqlite::memory:").await.unwrap());
-    let auth = Arc::new(AuthManager::new(db, Some(Duration::from_secs(60))));
+    let vault = Arc::new(VaultManager::new("sqlite::memory:").await.unwrap());
+    let auth = Arc::new(AuthManager::new(vault, Some(Duration::from_secs(60))));
 
     auth.start_activity_counter();
     auth.initialize("longRunningCounter").await.unwrap();

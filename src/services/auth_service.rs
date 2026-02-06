@@ -297,10 +297,8 @@ impl AuthService {
     /// This will:
     /// 1. Verify the old PIN
     /// 2. Derive a new master key from the new PIN
-    /// 3. Update the stored verification hash
-    ///
-    /// **Note**: This does NOT re-encrypt existing keys. For full security,
-    /// call `KeyService::reencrypt_all_keys()` after changing the PIN.
+    /// 3. Re-encrypt all existing keys with the new master key
+    /// 4. Update the stored verification hash
     ///
     /// # Arguments
     ///
@@ -311,6 +309,7 @@ impl AuthService {
     ///
     /// - [`VaultError::InvalidPin`] if old PIN is incorrect
     /// - [`VaultError::PinTooShort`] if new PIN is too short
+    /// - [`VaultError::Decryption`] if any keys fail to decrypt
     ///
     /// # Example
     ///
@@ -326,18 +325,83 @@ impl AuthService {
             return Err(VaultError::PinTooLong);
         }
 
-        // Verify old PIN first
+        // Verify old PIN first and get the old master key
         self.unlock(old_pin).await?;
+        
+        // Get the old master key before we change it
+        let old_vault_key = {
+            let key_guard = self.vault_key.read().await;
+            key_guard.clone().ok_or(VaultError::Locked)?
+        };
 
         // Generate new salt and key
         let new_salt = self.crypto.generate_salt();
         let new_vault_key = self.crypto.derive_master_key(new_pin, &new_salt)?;
 
+        // Re-encrypt all existing keys with the new master key
+        let pool = &self.db.pool;
+        let rows = sqlx::query_as::<_, crate::database::EncryptedApiKeyRow>(
+            "SELECT id, app_name, key_name, api_url, description, encrypted_key_value, nonce, key_salt, created_at, updated_at FROM api_keys"
+        )
+        .fetch_all(pool)
+        .await
+        .map_err(|e| VaultError::Database(e.to_string()))?;
+
+        // Re-encrypt each key
+        for row in rows {
+            // Derive per-key encryption key with OLD master key
+            let app_name_for_encryption = row.app_name.as_deref().unwrap_or("");
+            let key_salt: &[u8; 32] = row
+                .key_salt
+                .as_slice()
+                .try_into()
+                .map_err(|_| VaultError::InvalidInput("Invalid key salt length".to_string()))?;
+            
+            let old_per_key_key = crate::crypto::derive_per_key_encryption_key(
+                &old_vault_key,
+                app_name_for_encryption,
+                &row.key_name,
+                key_salt,
+            )
+            .map_err(|e| VaultError::KeyDerivation(e.to_string()))?;
+
+            // Decrypt with old key
+            let encrypted_data = crate::crypto::EncryptedData {
+                ciphertext: row.encrypted_key_value,
+                nonce: row.nonce,
+            };
+            let key_value = crate::crypto::decrypt(&encrypted_data, &old_per_key_key)
+                .map_err(|e| VaultError::Decryption(e.to_string()))?;
+
+            // Derive per-key encryption key with NEW master key (same salt)
+            let new_per_key_key = crate::crypto::derive_per_key_encryption_key(
+                &new_vault_key,
+                app_name_for_encryption,
+                &row.key_name,
+                key_salt,
+            )
+            .map_err(|e| VaultError::KeyDerivation(e.to_string()))?;
+
+            // Re-encrypt with new key
+            let new_encrypted = crate::crypto::encrypt(&key_value, &new_per_key_key)
+                .map_err(|e| VaultError::Encryption(e.to_string()))?;
+
+            // Update the database
+            sqlx::query(
+                "UPDATE api_keys SET encrypted_key_value = ?1, nonce = ?2 WHERE id = ?3"
+            )
+            .bind(&new_encrypted.ciphertext)
+            .bind(&new_encrypted.nonce)
+            .bind(&row.id)
+            .execute(pool)
+            .await
+            .map_err(|e| VaultError::Database(e.to_string()))?;
+        }
+
+        // Update vault config with new PIN
         let new_salt_hex = hex::encode(new_salt);
         let new_pin_hash = format!("${new_salt_hex}:{}", new_vault_key.as_bytes()[0]);
 
-        // Update config
-        let pool = &self.db.pool;
         sqlx::query("UPDATE vault_config SET salt = ?1, pin_hash = ?2 WHERE id = 1")
             .bind(new_salt.as_slice())
             .bind(&new_pin_hash)

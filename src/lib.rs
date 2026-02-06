@@ -70,6 +70,10 @@ pub mod clipboard;
 /// Cryptographic operations (Argon2id, AES-256-GCM)
 pub mod crypto;
 
+/// Formal verification harnesses for cryptographic operations
+#[cfg(kani)]
+mod crypto_verification;
+
 /// Database operations (SQLite with SQLx)
 pub mod database;
 
