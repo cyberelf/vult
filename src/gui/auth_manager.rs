@@ -134,14 +134,22 @@ impl AuthManager {
 
     /// Initializes the vault with a new PIN
     pub async fn initialize(&self, pin: &str) -> Result<()> {
-        self.vault.auth().init_vault(pin).await.map_err(AuthError::from)?;
+        self.vault
+            .auth()
+            .init_vault(pin)
+            .await
+            .map_err(AuthError::from)?;
         self.update_state_unlocked().await;
         Ok(())
     }
 
     /// Unlocks the vault with a PIN
     pub async fn unlock(&self, pin: &str) -> Result<()> {
-        self.vault.auth().unlock(pin).await.map_err(AuthError::from)?;
+        self.vault
+            .auth()
+            .unlock(pin)
+            .await
+            .map_err(AuthError::from)?;
         self.update_state_unlocked().await;
         Ok(())
     }

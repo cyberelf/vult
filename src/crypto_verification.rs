@@ -45,16 +45,14 @@ mod kani_verification {
         }
 
         // Encrypt twice with same key and plaintext
-        if let (Ok(encrypted1), Ok(encrypted2)) = (
-            encrypt(&plaintext, &key),
-            encrypt(&plaintext, &key.clone()),
-        ) {
+        if let (Ok(encrypted1), Ok(encrypted2)) =
+            (encrypt(&plaintext, &key), encrypt(&plaintext, &key.clone()))
+        {
             // Property: Ciphertexts should be different (due to random nonce)
             // but both should decrypt to same plaintext
-            if let (Ok(decrypted1), Ok(decrypted2)) = (
-                decrypt(&encrypted1, &key),
-                decrypt(&encrypted2, &key),
-            ) {
+            if let (Ok(decrypted1), Ok(decrypted2)) =
+                (decrypt(&encrypted1, &key), decrypt(&encrypted2, &key))
+            {
                 assert_eq!(decrypted1, decrypted2);
                 assert_eq!(decrypted1, plaintext);
             }
@@ -79,10 +77,9 @@ mod kani_verification {
         }
 
         // Encrypt with two different keys
-        if let (Ok(encrypted1), Ok(_encrypted2)) = (
-            encrypt(&plaintext, &key1),
-            encrypt(&plaintext, &key2),
-        ) {
+        if let (Ok(encrypted1), Ok(_encrypted2)) =
+            (encrypt(&plaintext, &key1), encrypt(&plaintext, &key2))
+        {
             // Property: Decryption with wrong key should fail
             if let Ok(decrypted_wrong) = decrypt(&encrypted1, &key2) {
                 // If it somehow succeeds, it should not equal original
@@ -90,7 +87,7 @@ mod kani_verification {
             }
 
             // Property: Correct key should work
-            if let Ok(decrypted_correct)  = decrypt(&encrypted1, &key1) {
+            if let Ok(decrypted_correct) = decrypt(&encrypted1, &key1) {
                 assert_eq!(decrypted_correct, plaintext);
             }
         }
@@ -128,7 +125,7 @@ mod kani_verification {
         // Two different PINs
         let pin1 = String::from("pin123");
         let pin2 = String::from("pin456");
-        
+
         // Create arbitrary salt
         let salt: [u8; 32] = kani::any();
 

@@ -884,13 +884,8 @@ impl VaultDb {
     /// # Errors
     ///
     /// Returns an error if the transaction cannot be started.
-    pub async fn begin_transaction(
-        &self,
-    ) -> Result<sqlx::Transaction<'static, Sqlite>> {
-        self.pool
-            .begin()
-            .await
-            .map_err(DbError::Database)
+    pub async fn begin_transaction(&self) -> Result<sqlx::Transaction<'static, Sqlite>> {
+        self.pool.begin().await.map_err(DbError::Database)
     }
 
     /// Executes a closure within a transaction.

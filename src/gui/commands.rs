@@ -140,7 +140,7 @@ pub async fn create_api_key(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<CommandResponse<ApiKeyWithSecret>, String> {
     auth_manager.update_activity().await;
-    
+
     // Create the key and get the ID
     let id = auth_manager
         .vault()
@@ -187,7 +187,7 @@ pub async fn get_api_key(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<CommandResponse<ApiKeyWithSecret>, String> {
     auth_manager.update_activity().await;
-    
+
     let key = auth_manager
         .vault()
         .keys()
@@ -217,7 +217,7 @@ pub async fn list_api_keys(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<CommandResponse<Vec<ApiKey>>, String> {
     auth_manager.update_activity().await;
-    
+
     let keys = auth_manager
         .vault()
         .keys()
@@ -249,7 +249,7 @@ pub async fn search_api_keys(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<CommandResponse<Vec<ApiKey>>, String> {
     auth_manager.update_activity().await;
-    
+
     let keys = auth_manager
         .vault()
         .keys()
@@ -280,7 +280,7 @@ pub async fn update_api_key(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<CommandResponse<ApiKeyWithSecret>, String> {
     auth_manager.update_activity().await;
-    
+
     // Build the update request from the frontend input
     let request = UpdateKeyRequest {
         app_name: input.app_name.map(Some),
@@ -328,7 +328,7 @@ pub async fn delete_api_key(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<CommandResponse<()>, String> {
     auth_manager.update_activity().await;
-    
+
     auth_manager
         .vault()
         .keys()
@@ -351,7 +351,7 @@ pub async fn copy_to_clipboard(
     clipboard: tauri::State<'_, Arc<ClipboardManager>>,
 ) -> Result<CommandResponse<String>, String> {
     auth_manager.update_activity().await;
-    
+
     let api_key = auth_manager
         .vault()
         .keys()

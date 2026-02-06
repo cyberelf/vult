@@ -46,7 +46,7 @@ fn test_cli_help() {
 #[test]
 fn test_init_creates_vault() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
-    
+
     vult_cmd(&temp_dir)
         .arg("init")
         .env("VULT_PIN", "123456")
@@ -58,7 +58,7 @@ fn test_init_creates_vault() {
 #[test]
 fn test_init_fails_with_short_pin() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
-    
+
     vult_cmd(&temp_dir)
         .arg("init")
         .env("VULT_PIN", "123")
@@ -71,7 +71,7 @@ fn test_init_fails_with_short_pin() {
 fn test_init_fails_if_already_initialized() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     vult_cmd(&temp_dir)
         .arg("init")
         .env("VULT_PIN", "654321")
@@ -84,7 +84,7 @@ fn test_init_fails_if_already_initialized() {
 fn test_status_shows_initialized() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     vult_cmd(&temp_dir)
         .arg("status")
         .env("VULT_PIN", "123456")
@@ -97,7 +97,7 @@ fn test_status_shows_initialized() {
 fn test_add_and_get_key() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     // Add a key (use --stdin for non-interactive testing)
     vult_cmd(&temp_dir)
         .args(["add", "test-key", "-a", "github", "--stdin"])
@@ -106,7 +106,7 @@ fn test_add_and_get_key() {
         .assert()
         .success()
         .stdout(predicate::str::contains("added successfully"));
-    
+
     // Get the key
     vult_cmd(&temp_dir)
         .args(["get", "test-key", "-a", "github"])
@@ -120,7 +120,7 @@ fn test_add_and_get_key() {
 fn test_add_key_with_stdin() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     vult_cmd(&temp_dir)
         .args(["add", "stdin-key", "--stdin"])
         .env("VULT_PIN", "123456")
@@ -128,7 +128,7 @@ fn test_add_key_with_stdin() {
         .assert()
         .success()
         .stdout(predicate::str::contains("added successfully"));
-    
+
     vult_cmd(&temp_dir)
         .args(["get", "stdin-key"])
         .env("VULT_PIN", "123456")
@@ -141,7 +141,7 @@ fn test_add_key_with_stdin() {
 fn test_list_empty() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     vult_cmd(&temp_dir)
         .arg("list")
         .env("VULT_PIN", "123456")
@@ -154,7 +154,7 @@ fn test_list_empty() {
 fn test_list_shows_keys() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     // Add keys
     vult_cmd(&temp_dir)
         .args(["add", "key1", "-a", "app1", "--stdin"])
@@ -162,14 +162,14 @@ fn test_list_shows_keys() {
         .write_stdin("value1")
         .assert()
         .success();
-    
+
     vult_cmd(&temp_dir)
         .args(["add", "key2", "-a", "app2", "--stdin"])
         .env("VULT_PIN", "123456")
         .write_stdin("value2")
         .assert()
         .success();
-    
+
     // List should show both
     vult_cmd(&temp_dir)
         .arg("list")
@@ -184,14 +184,14 @@ fn test_list_shows_keys() {
 fn test_list_json_output() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     vult_cmd(&temp_dir)
         .args(["add", "json-key", "-a", "test", "--stdin"])
         .env("VULT_PIN", "123456")
         .write_stdin("json-value")
         .assert()
         .success();
-    
+
     vult_cmd(&temp_dir)
         .args(["list", "--json"])
         .env("VULT_PIN", "123456")
@@ -204,7 +204,7 @@ fn test_list_json_output() {
 fn test_search_finds_matching_keys() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     // Add keys
     vult_cmd(&temp_dir)
         .args(["add", "github-token", "-a", "github", "--stdin"])
@@ -212,14 +212,14 @@ fn test_search_finds_matching_keys() {
         .write_stdin("gh-token")
         .assert()
         .success();
-    
+
     vult_cmd(&temp_dir)
         .args(["add", "gitlab-token", "-a", "gitlab", "--stdin"])
         .env("VULT_PIN", "123456")
         .write_stdin("gl-token")
         .assert()
         .success();
-    
+
     // Search should find github
     vult_cmd(&temp_dir)
         .args(["search", "github"])
@@ -234,7 +234,7 @@ fn test_search_finds_matching_keys() {
 fn test_search_no_results() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     vult_cmd(&temp_dir)
         .args(["search", "nonexistent"])
         .env("VULT_PIN", "123456")
@@ -247,7 +247,7 @@ fn test_search_no_results() {
 fn test_update_key_value() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     // Add key
     vult_cmd(&temp_dir)
         .args(["add", "update-key", "--stdin"])
@@ -255,7 +255,7 @@ fn test_update_key_value() {
         .write_stdin("original-value")
         .assert()
         .success();
-    
+
     // Update value
     vult_cmd(&temp_dir)
         .args(["update", "update-key", "--value", "new-value"])
@@ -263,7 +263,7 @@ fn test_update_key_value() {
         .assert()
         .success()
         .stdout(predicate::str::contains("updated successfully"));
-    
+
     // Verify new value
     vult_cmd(&temp_dir)
         .args(["get", "update-key"])
@@ -277,7 +277,7 @@ fn test_update_key_value() {
 fn test_delete_key() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     // Add key
     vult_cmd(&temp_dir)
         .args(["add", "delete-me", "--stdin"])
@@ -285,7 +285,7 @@ fn test_delete_key() {
         .write_stdin("to-be-deleted")
         .assert()
         .success();
-    
+
     // Delete with --force
     vult_cmd(&temp_dir)
         .args(["delete", "delete-me", "--force"])
@@ -293,7 +293,7 @@ fn test_delete_key() {
         .assert()
         .success()
         .stdout(predicate::str::contains("deleted"));
-    
+
     // Verify it's gone
     vult_cmd(&temp_dir)
         .args(["get", "delete-me"])
@@ -306,7 +306,7 @@ fn test_delete_key() {
 fn test_wrong_pin_fails() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     vult_cmd(&temp_dir)
         .arg("list")
         .env("VULT_PIN", "wrong-pin")
@@ -318,7 +318,7 @@ fn test_wrong_pin_fails() {
 fn test_lock_command() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     vult_cmd(&temp_dir)
         .arg("lock")
         .assert()
@@ -330,7 +330,7 @@ fn test_lock_command() {
 fn test_duplicate_key_fails() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     // Add key
     vult_cmd(&temp_dir)
         .args(["add", "dup-key", "--stdin"])
@@ -338,7 +338,7 @@ fn test_duplicate_key_fails() {
         .write_stdin("value1")
         .assert()
         .success();
-    
+
     // Try to add same key again
     vult_cmd(&temp_dir)
         .args(["add", "dup-key", "--stdin"])
@@ -353,7 +353,7 @@ fn test_duplicate_key_fails() {
 fn test_get_nonexistent_key_fails() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     vult_cmd(&temp_dir)
         .args(["get", "nonexistent-key"])
         .env("VULT_PIN", "123456")
@@ -366,7 +366,7 @@ fn test_get_nonexistent_key_fails() {
 fn test_change_pin_success() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     // Add a key with the original PIN
     vult_cmd(&temp_dir)
         .args(["add", "test-key", "-a", "app", "--stdin"])
@@ -374,7 +374,7 @@ fn test_change_pin_success() {
         .write_stdin("secret-value")
         .assert()
         .success();
-    
+
     // Change PIN from 123456 to 654321
     vult_cmd(&temp_dir)
         .arg("change-pin")
@@ -383,7 +383,7 @@ fn test_change_pin_success() {
         .assert()
         .success()
         .stdout(predicate::str::contains("PIN changed successfully"));
-    
+
     // Verify old PIN no longer works
     vult_cmd(&temp_dir)
         .args(["get", "test-key", "-a", "app"])
@@ -391,7 +391,7 @@ fn test_change_pin_success() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("Invalid PIN"));
-    
+
     // Verify new PIN works and can access the key
     vult_cmd(&temp_dir)
         .args(["get", "test-key", "-a", "app"])
@@ -405,7 +405,7 @@ fn test_change_pin_success() {
 fn test_change_pin_wrong_old_pin() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     // Try to change PIN with wrong old PIN
     vult_cmd(&temp_dir)
         .arg("change-pin")
@@ -420,7 +420,7 @@ fn test_change_pin_wrong_old_pin() {
 fn test_change_pin_short_new_pin() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     init_vault(&temp_dir, "123456");
-    
+
     // Try to change to a short PIN
     vult_cmd(&temp_dir)
         .arg("change-pin")

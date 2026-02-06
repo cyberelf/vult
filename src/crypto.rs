@@ -138,7 +138,10 @@ pub fn derive_key_from_pin(pin: &str, salt: &[u8; 32]) -> Result<VaultKey> {
     if hash_bytes.len() < 32 {
         return Err(CryptoError::InvalidKeyLength);
     }
-    debug_assert!(hash_bytes.len() >= 32, "Argon2 output must be at least 32 bytes");
+    debug_assert!(
+        hash_bytes.len() >= 32,
+        "Argon2 output must be at least 32 bytes"
+    );
 
     // Take first 32 bytes as our key
     let mut key_array = [0u8; 32];
@@ -171,7 +174,7 @@ pub fn generate_salt() -> [u8; 32] {
 pub fn encrypt(plaintext: &[u8], key: &VaultKey) -> Result<EncryptedData> {
     // Invariant: Key must be exactly 32 bytes
     debug_assert_eq!(key.as_bytes().len(), 32, "VaultKey must be 32 bytes");
-    
+
     let cipher = Aes256Gcm::new(key.as_bytes().into());
     let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
 
@@ -205,14 +208,17 @@ pub fn encrypt(plaintext: &[u8], key: &VaultKey) -> Result<EncryptedData> {
 pub fn decrypt(encrypted: &EncryptedData, key: &VaultKey) -> Result<Vec<u8>> {
     // Invariant: Key must be exactly 32 bytes
     debug_assert_eq!(key.as_bytes().len(), 32, "VaultKey must be 32 bytes");
-    
+
     // Invariant: Nonce must be exactly 12 bytes for AES-GCM
     if encrypted.nonce.len() != 12 {
         return Err(CryptoError::InvalidNonceLength);
     }
 
     // Invariant: Ciphertext must not be empty
-    debug_assert!(!encrypted.ciphertext.is_empty(), "Ciphertext cannot be empty");
+    debug_assert!(
+        !encrypted.ciphertext.is_empty(),
+        "Ciphertext cannot be empty"
+    );
 
     let mut nonce_array = [0u8; 12];
     nonce_array.copy_from_slice(&encrypted.nonce);
@@ -255,14 +261,18 @@ pub fn derive_per_key_encryption_key(
     salt: &[u8; 32],
 ) -> Result<VaultKey> {
     // Invariant: Master key must be 32 bytes
-    debug_assert_eq!(master_key.as_bytes().len(), 32, "Master key must be 32 bytes");
-    
+    debug_assert_eq!(
+        master_key.as_bytes().len(),
+        32,
+        "Master key must be 32 bytes"
+    );
+
     // Invariant: Salt must be exactly 32 bytes
     debug_assert_eq!(salt.len(), 32, "Per-key salt must be 32 bytes");
-    
+
     // Invariant: Key name must not be empty (app_name can be empty)
     debug_assert!(!key_name.is_empty(), "Key name cannot be empty");
-    
+
     // Create context string from key metadata
     let context = format!("{}|{}", app_name, key_name);
 
@@ -293,7 +303,10 @@ pub fn derive_per_key_encryption_key(
     if hash_bytes.len() < 32 {
         return Err(CryptoError::InvalidKeyLength);
     }
-    debug_assert!(hash_bytes.len() >= 32, "Derived key must be at least 32 bytes");
+    debug_assert!(
+        hash_bytes.len() >= 32,
+        "Derived key must be at least 32 bytes"
+    );
 
     let mut key_array = [0u8; 32];
     key_array.copy_from_slice(&hash_bytes[..32]);

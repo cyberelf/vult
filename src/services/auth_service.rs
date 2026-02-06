@@ -327,7 +327,7 @@ impl AuthService {
 
         // Verify old PIN first and get the old master key
         self.unlock(old_pin).await?;
-        
+
         // Get the old master key before we change it
         let old_vault_key = {
             let key_guard = self.vault_key.read().await;
@@ -356,7 +356,7 @@ impl AuthService {
                 .as_slice()
                 .try_into()
                 .map_err(|_| VaultError::InvalidInput("Invalid key salt length".to_string()))?;
-            
+
             let old_per_key_key = crate::crypto::derive_per_key_encryption_key(
                 &old_vault_key,
                 app_name_for_encryption,
@@ -387,15 +387,13 @@ impl AuthService {
                 .map_err(|e| VaultError::Encryption(e.to_string()))?;
 
             // Update the database
-            sqlx::query(
-                "UPDATE api_keys SET encrypted_key_value = ?1, nonce = ?2 WHERE id = ?3"
-            )
-            .bind(&new_encrypted.ciphertext)
-            .bind(&new_encrypted.nonce)
-            .bind(&row.id)
-            .execute(pool)
-            .await
-            .map_err(|e| VaultError::Database(e.to_string()))?;
+            sqlx::query("UPDATE api_keys SET encrypted_key_value = ?1, nonce = ?2 WHERE id = ?3")
+                .bind(&new_encrypted.ciphertext)
+                .bind(&new_encrypted.nonce)
+                .bind(&row.id)
+                .execute(pool)
+                .await
+                .map_err(|e| VaultError::Database(e.to_string()))?;
         }
 
         // Update vault config with new PIN
