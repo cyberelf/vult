@@ -282,12 +282,13 @@ pub async fn update_api_key(
     auth_manager.update_activity().await;
 
     // Build the update request from the frontend input
+    // For partial updates: frontend sends None for fields to keep unchanged
     let request = UpdateKeyRequest {
-        app_name: input.app_name.map(Some),
+        app_name: input.app_name.map(Some), // Option<String> -> Option<Option<String>>
         key_name: input.key_name,
         key_value: input.key_value,
-        api_url: input.api_url,
-        description: input.description,
+        api_url: input.api_url, // Already Option<Option<String>>
+        description: input.description, // Already Option<Option<String>>
     };
 
     auth_manager
@@ -297,25 +298,29 @@ pub async fn update_api_key(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Fetch the updated key to return full details
-    let key = auth_manager
+    // Fetch updated metadata only (no decryption for partial updates)
+    let metadata = auth_manager
         .vault()
         .keys()
-        .get_by_id(&input.id)
+        .list()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .find(|k| k.id == input.id)
+        .ok_or_else(|| "Key not found after update".to_string())?;
 
     let result = ApiKeyWithSecret {
         api_key: ApiKey {
-            id: key.id,
-            app_name: key.app_name,
-            key_name: key.key_name,
-            api_url: key.api_url,
-            description: key.description,
-            created_at: key.created_at,
-            updated_at: key.updated_at,
+            id: metadata.id,
+            app_name: metadata.app_name,
+            key_name: metadata.key_name,
+            api_url: metadata.api_url,
+            description: metadata.description,
+            created_at: metadata.created_at,
+            updated_at: metadata.updated_at,
         },
-        key_value: key.key_value,
+        // For metadata updates, return masked value (not decrypted)
+        key_value: "••••••••".to_string(),
     };
 
     Ok(CommandResponse::success(result))

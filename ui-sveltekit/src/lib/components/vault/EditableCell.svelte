@@ -50,6 +50,13 @@
       isEditing = false;
     } catch (e) {
       console.error('Failed to save', e);
+      // Show error message to user with proper visibility
+      const errorMsg = e instanceof Error ? e.message : 'Failed to save';
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-4 right-4 bg-red-600 text-white px-4 py-3 rounded-lg text-sm shadow-lg z-50 max-w-md border border-red-700 font-medium';
+      toast.textContent = `Failed to update: ${errorMsg}`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 5000);
       // Keep editing state if failed
       inputRef?.focus();
     } finally {
@@ -74,25 +81,14 @@
   }
 
   // Handle saving when focus leaves the input
-  // We use a small timeout to allow button clicks (Save/Cancel) to register if they were the cause of blur
-  // But simpler approach: use onmousedown on buttons to prevent blur.
   function handleBlur(e: FocusEvent) {
-    // If the related target (what we are focusing) is one of our buttons, don't save yet.
-    // The buttons will handle the action.
-    // But `relatedTarget` logic is standard.
-    // However, simplest is to just Save on blur.
-    // If user clicked Cancel, they clicked Cancel.
-    // But clicking Cancel moves focus. cancel() runs. Then handleBlur?
-    // We'll rely on Save-on-blur as the primary "finish" action.
-    // The "Cancel" button needs `onmousedown` preventDefault to allow its click handler to fire properly without blur race conditions?
-    // Actually, usually "Escape" is for cancel. "Click outside" is Save.
-    // Explicit "X" button should be Cancel.
-    // If I click "X", blur fires. I save. Then X click fires?
-    
-    // Strategy: Focus-out = Save.
-    // To Cancel, you MUST press Escape or use the X button (which we handle carefully).
-    
-    // For now, I'll rely on Enter/Escape mainly, but support Save-on-Blur.
+    // Check if we're focusing one of our buttons
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget && relatedTarget.closest('.editable-cell-actions')) {
+      // Clicking a button, let the button handler deal with it
+      return;
+    }
+    // Otherwise, save on blur (clicking outside, tabbing away, etc.)
     save();
   }
 </script>
@@ -111,12 +107,12 @@
         onclick={(e) => e.stopPropagation()}
       />
       <!-- Actions overlay inside input -->
-      <div class="absolute right-1 flex items-center gap-0.5 bg-background/90 rounded border border-border shadow-sm">
+      <div class="editable-cell-actions absolute right-1 flex items-center gap-0.5 bg-background/90 rounded border border-border shadow-sm">
         <button 
             type="button"
             class="p-1 hover:bg-primary/20 hover:text-primary text-foreground-secondary rounded"
-            onmousedown={(e) => e.preventDefault()} 
             onclick={save}
+            disabled={isSaving}
             title="Save (Enter)"
         >
             <Check class="w-3 h-3" />
@@ -124,8 +120,8 @@
         <button 
             type="button"
             class="p-1 hover:bg-danger/20 hover:text-danger text-foreground-secondary rounded"
-            onmousedown={(e) => e.preventDefault()}
             onclick={cancel}
+            disabled={isSaving}
             title="Cancel (Esc)"
         >
             <X class="w-3 h-3" />

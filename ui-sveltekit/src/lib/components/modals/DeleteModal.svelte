@@ -39,7 +39,6 @@
     <!-- Backdrop -->
     <div
       class="absolute inset-0 bg-black/80"
-      onclick={() => uiStore.closeModal()}
       role="presentation"
     ></div>
 

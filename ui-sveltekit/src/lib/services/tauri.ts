@@ -130,14 +130,29 @@ export async function listApiKeys(): Promise<ListApiKeysResult> {
  */
 export async function createApiKey(args: CreateApiKeyArgs): Promise<ApiKey> {
   try {
-    const result = await invoke<ApiKey>('create_api_key', {
-      appName: args.appName,
-      keyName: args.keyName,
-      apiKey: args.keyValue,
-      apiUrl: args.apiUrl ?? null,
-      description: args.description ?? null,
+    const response = await invoke<CommandResponse<any>>('create_api_key', {
+      input: {
+        app_name: args.appName,
+        key_name: args.keyName,
+        key_value: args.keyValue,
+        api_url: args.apiUrl ?? null,
+        description: args.description ?? null,
+      },
     });
-    return result;
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to create API key');
+    }
+    const key = response.data;
+    // Transform snake_case from Rust to camelCase for TypeScript
+    return {
+      ...key,
+      appName: key.app_name,
+      keyName: key.key_name,
+      keyValue: key.key_value,
+      apiUrl: key.api_url,
+      createdAt: key.created_at,
+      updatedAt: key.updated_at,
+    };
   } catch (error) {
     throw new Error(`Failed to create API key: ${error}`);
   }
@@ -196,10 +211,23 @@ export async function updateApiKey(args: UpdateApiKeyArgs): Promise<ApiKey> {
     if (args.apiUrl !== undefined) rustInput.api_url = args.apiUrl || null;
     if (args.description !== undefined) rustInput.description = args.description || null;
 
-    const result = await invoke<ApiKey>('update_api_key', {
+    const response = await invoke<CommandResponse<any>>('update_api_key', {
       input: rustInput
     });
-    return result;
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to update API key');
+    }
+    const key = response.data;
+    // Transform snake_case from Rust to camelCase for TypeScript
+    return {
+      ...key,
+      appName: key.app_name,
+      keyName: key.key_name,
+      keyValue: key.key_value,
+      apiUrl: key.api_url,
+      createdAt: key.created_at,
+      updatedAt: key.updated_at,
+    };
   } catch (error) {
     throw new Error(`Failed to update API key: ${error}`);
   }

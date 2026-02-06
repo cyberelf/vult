@@ -410,7 +410,7 @@ impl KeyService {
     /// Updates an existing API key.
     ///
     /// Only provided fields are updated. If `key_value` is provided,
-    /// the key will be re-encrypted.
+    /// or if `app_name`/`key_name` changes, the key will be re-encrypted.
     pub async fn update(&self, id: &str, request: UpdateKeyRequest) -> Result<()> {
         self.require_unlocked().await?;
 
@@ -419,19 +419,39 @@ impl KeyService {
 
         let now = Utc::now().timestamp();
 
-        // Determine new values
-        let new_app_name = request
-            .app_name
-            .unwrap_or(Some(existing.app_name.clone().unwrap_or_default()));
+        // Determine new values (None = keep existing, Some(value) = update)
+        let new_app_name = match request.app_name {
+            None => existing.app_name.clone(),
+            Some(val) => val,
+        };
         let new_key_name = request.key_name.unwrap_or(existing.key_name.clone());
-        let new_api_url = request.api_url.unwrap_or(existing.api_url.clone());
-        let new_description = request.description.unwrap_or(existing.description.clone());
+        let new_api_url = match request.api_url {
+            None => existing.api_url.clone(),
+            Some(val) => val,
+        };
+        let new_description = match request.description {
+            None => existing.description.clone(),
+            Some(val) => val,
+        };
 
-        if let Some(new_value) = request.key_value {
-            // Re-encrypt with new value
+        // Check if app_name or key_name changed (requires re-encryption)
+        let app_changed = new_app_name != existing.app_name;
+        let key_changed = new_key_name != existing.key_name;
+
+        // Re-encrypt if key_value changed OR if app_name/key_name changed
+        let needs_reencrypt = request.key_value.is_some() || app_changed || key_changed;
+
+        if needs_reencrypt {
+            // Use the new value if provided, otherwise use existing decrypted value
+            let value_to_encrypt = if let Some(new_value) = request.key_value {
+                new_value
+            } else {
+                existing.key_value
+            };
+
             let master_key = self.auth.get_vault_key().await?;
             let (encrypted, salt) = self.crypto.encrypt_api_key(
-                &new_value,
+                &value_to_encrypt,
                 &master_key,
                 new_app_name.as_deref().unwrap_or(""),
                 &new_key_name,
@@ -458,7 +478,7 @@ impl KeyService {
             .await
             .map_err(|e| VaultError::Database(e.to_string()))?;
         } else {
-            // Update metadata only
+            // Update metadata only (no encryption context changes)
             sqlx::query(
                 r#"
                 UPDATE api_keys
@@ -562,6 +582,7 @@ mod tests {
         (key_service, auth)
     }
 
+  
     #[tokio::test]
     async fn test_create_key() {
         let (service, _auth) = setup_test_services().await;
@@ -788,5 +809,261 @@ mod tests {
 
         let result = service.get("github", "token").await;
         assert!(result.is_err());
+    }
+
+    // Test re-encryption when app_name changes
+    #[tokio::test]
+    async fn test_update_key_with_app_name_change() {
+        let (service, _auth) = setup_test_services().await;
+
+        let id = service
+            .create(Some("github"), "token", "ghp_secret123", None, None)
+            .await
+            .unwrap();
+
+        // Get the original key to verify value remains the same
+        let original_key = service.get_by_id(&id).await.unwrap();
+        assert_eq!(original_key.app_name, Some("github".to_string()));
+        assert_eq!(original_key.key_name, "token");
+        assert_eq!(original_key.key_value, "ghp_secret123");
+
+        // Update app_name from "github" to "gitlab"
+        let update = UpdateKeyRequest {
+            app_name: Some(Some("gitlab".to_string())),
+            ..Default::default()
+        };
+
+        service.update(&id, update).await.unwrap();
+
+        // Verify the update worked
+        let updated_key = service.get_by_id(&id).await.unwrap();
+        assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
+        assert_eq!(updated_key.key_name, "token");
+        assert_eq!(updated_key.key_value, "ghp_secret123"); // Value should remain the same
+
+        // Verify the key can be accessed with new app_name
+        let key_by_name = service.get("gitlab", "token").await.unwrap();
+        assert_eq!(key_by_name.key_value, "ghp_secret123");
+
+        // Verify old app_name no longer works
+        let result = service.get("github", "token").await;
+        assert!(result.is_err());
+    }
+
+    // Test re-encryption when key_name changes
+    #[tokio::test]
+    async fn test_update_key_with_key_name_change() {
+        let (service, _auth) = setup_test_services().await;
+
+        let id = service
+            .create(Some("github"), "token", "ghp_secret123", None, None)
+            .await
+            .unwrap();
+
+        // Get the original key
+        let original_key = service.get_by_id(&id).await.unwrap();
+        assert_eq!(original_key.app_name, Some("github".to_string()));
+        assert_eq!(original_key.key_name, "token");
+        assert_eq!(original_key.key_value, "ghp_secret123");
+
+        // Update key_name from "token" to "access-token"
+        let update = UpdateKeyRequest {
+            key_name: Some("access-token".to_string()),
+            ..Default::default()
+        };
+
+        service.update(&id, update).await.unwrap();
+
+        // Verify the update worked
+        let updated_key = service.get_by_id(&id).await.unwrap();
+        assert_eq!(updated_key.app_name, Some("github".to_string()));
+        assert_eq!(updated_key.key_name, "access-token");
+        assert_eq!(updated_key.key_value, "ghp_secret123");
+
+        // Verify the key can be accessed with new key_name
+        let key_by_name = service.get("github", "access-token").await.unwrap();
+        assert_eq!(key_by_name.key_value, "ghp_secret123");
+
+        // Verify old key_name no longer works
+        let result = service.get("github", "token").await;
+        assert!(result.is_err());
+    }
+
+    // Test re-encryption when both app_name and key_name change
+    #[tokio::test]
+    async fn test_update_key_with_both_name_changes() {
+        let (service, _auth) = setup_test_services().await;
+
+        let id = service
+            .create(Some("github"), "token", "ghp_secret123", None, None)
+            .await
+            .unwrap();
+
+        // Get the original key
+        let original_key = service.get_by_id(&id).await.unwrap();
+        assert_eq!(original_key.app_name, Some("github".to_string()));
+        assert_eq!(original_key.key_name, "token");
+        assert_eq!(original_key.key_value, "ghp_secret123");
+
+        // Update both app_name and key_name
+        let update = UpdateKeyRequest {
+            app_name: Some(Some("gitlab".to_string())),
+            key_name: Some("access-token".to_string()),
+            ..Default::default()
+        };
+
+        service.update(&id, update).await.unwrap();
+
+        // Verify the update worked
+        let updated_key = service.get_by_id(&id).await.unwrap();
+        assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
+        assert_eq!(updated_key.key_name, "access-token");
+        assert_eq!(updated_key.key_value, "ghp_secret123");
+
+        // Verify the key can be accessed with new names
+        let key_by_name = service.get("gitlab", "access-token").await.unwrap();
+        assert_eq!(key_by_name.key_value, "ghp_secret123");
+
+        // Verify old names no longer work
+        let result1 = service.get("github", "token").await;
+        assert!(result1.is_err());
+
+        let result2 = service.get("github", "access-token").await;
+        assert!(result2.is_err());
+
+        let result3 = service.get("gitlab", "token").await;
+        assert!(result3.is_err());
+    }
+
+    // Test re-encryption when key_value changes with app_name
+    #[tokio::test]
+    async fn test_update_key_value_with_app_name_change() {
+        let (service, _auth) = setup_test_services().await;
+
+        let id = service
+            .create(Some("github"), "token", "old_secret", None, None)
+            .await
+            .unwrap();
+
+        // Update both key_value and app_name
+        let update = UpdateKeyRequest {
+            app_name: Some(Some("gitlab".to_string())),
+            key_value: Some("new_secret".to_string()),
+            ..Default::default()
+        };
+
+        service.update(&id, update).await.unwrap();
+
+        // Verify the update worked
+        let updated_key = service.get_by_id(&id).await.unwrap();
+        assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
+        assert_eq!(updated_key.key_name, "token");
+        assert_eq!(updated_key.key_value, "new_secret");
+
+        // Verify the key can be accessed with new app_name and has new value
+        let key_by_name = service.get("gitlab", "token").await.unwrap();
+        assert_eq!(key_by_name.key_value, "new_secret");
+    }
+
+    // Test update with empty app_name change
+    #[tokio::test]
+    async fn test_update_key_with_app_name_to_none() {
+        let (service, _auth) = setup_test_services().await;
+
+        let id = service
+            .create(Some("github"), "token", "secret123", None, None)
+            .await
+            .unwrap();
+
+        // Change app_name from Some("github") to None
+        let update = UpdateKeyRequest {
+            app_name: Some(None), // This sets app_name to NULL
+            ..Default::default()
+        };
+
+        service.update(&id, update).await.unwrap();
+
+        // Verify the update worked
+        let updated_key = service.get_by_id(&id).await.unwrap();
+        assert!(updated_key.app_name.is_none());
+        assert_eq!(updated_key.key_name, "token");
+        assert_eq!(updated_key.key_value, "secret123");
+
+        // Verify the key can be accessed with no app_name
+        let key_by_name = service.get("", "token").await.unwrap();
+        assert_eq!(key_by_name.key_value, "secret123");
+    }
+
+    // Test update from no app_name to app_name
+    #[tokio::test]
+    async fn test_update_key_from_no_app_name_to_app_name() {
+        let (service, _auth) = setup_test_services().await;
+
+        let id = service
+            .create(None, "token", "secret123", None, None)
+            .await
+            .unwrap();
+
+        // Change app_name from None to Some("gitlab")
+        let update = UpdateKeyRequest {
+            app_name: Some(Some("gitlab".to_string())),
+            ..Default::default()
+        };
+
+        service.update(&id, update).await.unwrap();
+
+        // Verify the update worked
+        let updated_key = service.get_by_id(&id).await.unwrap();
+        assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
+        assert_eq!(updated_key.key_name, "token");
+        assert_eq!(updated_key.key_value, "secret123");
+
+        // Verify the key can be accessed with new app_name
+        let key_by_name = service.get("gitlab", "token").await.unwrap();
+        assert_eq!(key_by_name.key_value, "secret123");
+
+        // Verify old access method no longer works
+        let result = service.get("", "token").await;
+        assert!(result.is_err());
+    }
+
+    // Test error handling when updating non-existent key
+    #[tokio::test]
+    async fn test_update_non_existent_key() {
+        let (service, _auth) = setup_test_services().await;
+
+        let update = UpdateKeyRequest {
+            key_name: Some("new-name".to_string()),
+            ..Default::default()
+        };
+
+        let result = service.update("non-existent-id", update).await;
+        assert!(result.is_err());
+    }
+
+    // Test partial update - only description
+    #[tokio::test]
+    async fn test_update_key_metadata_only() {
+        let (service, _auth) = setup_test_services().await;
+
+        let id = service
+            .create(Some("github"), "token", "secret123", None, Some("Old description"))
+            .await
+            .unwrap();
+
+        // Update only description
+        let update = UpdateKeyRequest {
+            description: Some(Some("New description".to_string())),
+            ..Default::default()
+        };
+
+        service.update(&id, update).await.unwrap();
+
+        // Verify only description changed
+        let updated_key = service.get_by_id(&id).await.unwrap();
+        assert_eq!(updated_key.app_name, Some("github".to_string()));
+        assert_eq!(updated_key.key_name, "token");
+        assert_eq!(updated_key.key_value, "secret123");
+        assert_eq!(updated_key.description, Some("New description".to_string()));
     }
 }

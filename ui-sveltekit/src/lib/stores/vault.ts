@@ -188,11 +188,11 @@ function createVaultStore() {
        try {
          const result = await tauri.updateApiKey({
            id: key.id,
-           appName: key.appName,
-           keyName: key.keyName,
-           // Do not send keyValue unless explicitly changing it (not supported in inline edit)
-           apiUrl: key.apiUrl || undefined, // undefined sends 'ignore' or 'null' depending on tauri.ts logic
-           description: key.description || undefined,
+           appName: key.appName !== undefined ? key.appName : undefined,
+           keyName: key.keyName !== undefined ? key.keyName : undefined,
+           // Do not send keyValue for inline edits (only for full form updates)
+           apiUrl: key.apiUrl !== undefined ? key.apiUrl : undefined,
+           description: key.description !== undefined ? key.description : undefined,
          });
          
          // Update local state with the returned (fresh) key
