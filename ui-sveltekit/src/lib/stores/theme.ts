@@ -10,44 +10,52 @@ export type Theme = 'light' | 'dark';
 // Get initial theme from localStorage or default to 'light'
 function getInitialTheme(): Theme {
   if (!browser) return 'light';
-  
+
   const stored = localStorage.getItem('vult-theme');
   if (stored === 'dark' || stored === 'light') {
     return stored;
   }
-  
-  // Check system preference as fallback
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return prefersDark ? 'dark' : 'light';
+
+  // Default to light mode (don't check system preference)
+  return 'light';
+}
+
+function applyTheme(theme: Theme) {
+  if (browser) {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }
 }
 
 function createThemeStore() {
-  const { subscribe, set } = writable<Theme>(getInitialTheme());
+  const { subscribe, set, update } = writable<Theme>(getInitialTheme());
 
   return {
     subscribe,
     toggle: () => {
-      const newTheme = getInitialTheme() === 'light' ? 'dark' : 'light';
-      set(newTheme);
-      
-      if (browser) {
-        localStorage.setItem('vult-theme', newTheme);
-        document.documentElement.setAttribute('data-theme', newTheme);
-      }
+      update(currentTheme => {
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+        if (browser) {
+          localStorage.setItem('vult-theme', newTheme);
+          applyTheme(newTheme);
+        }
+
+        return newTheme;
+      });
     },
     set: (theme: Theme) => {
       set(theme);
-      
+
       if (browser) {
         localStorage.setItem('vult-theme', theme);
-        document.documentElement.setAttribute('data-theme', theme);
+        applyTheme(theme);
       }
     },
     init: () => {
       if (browser) {
         const theme = getInitialTheme();
         set(theme);
-        document.documentElement.setAttribute('data-theme', theme);
+        applyTheme(theme);
       }
     }
   };

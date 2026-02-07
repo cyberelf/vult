@@ -1,115 +1,128 @@
 @import "tailwindcss";
 
-@layer theme {
-  :root {
-    /* System Fonts */
-    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+@custom-variant dark (&:where(.dark, .dark *));
 
-    /* Light Theme (Default) */
-    --bg-app: oklch(0.98 0.01 250);       /* Light grey-blue background */
-    --bg-subtle: oklch(0.95 0.01 250);    /* Subtle background */
-    --bg-surface: oklch(1 0 0);           /* Pure white cards */
-    --bg-elevated: oklch(0.97 0.01 250);  /* Slightly elevated surface */
+@theme inline {
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
 
-    --text-primary: oklch(0.15 0.02 250);     /* Dark text */
-    --text-secondary: oklch(0.45 0.02 250);   /* Muted text */
-    --text-inverse: oklch(0.98 0.01 250);     /* Light text for dark backgrounds */
-
-    --border-subtle: oklch(0.85 0.01 250);    /* Light border */
-    --border-strong: oklch(0.70 0.02 250);    /* Stronger border */
-
-    --primary: oklch(0.5 0.2 250);            /* Vibrant Blue */
-    --primary-hover: oklch(0.45 0.22 250);    /* Darker blue on hover */
-    --primary-foreground: oklch(1 0 0);       /* White text on primary */
-
-    --danger: oklch(0.55 0.22 25);            /* Red */
-    --danger-hover: oklch(0.5 0.24 25);       /* Darker red */
-    --danger-foreground: oklch(1 0 0);        /* White text */
-
-    --muted: oklch(0.92 0.01 250);            /* Muted background */
-    --muted-foreground: oklch(0.45 0.02 250); /* Muted text */
-
-    --card: oklch(1 0 0);                     /* Card background */
-    --card-foreground: oklch(0.15 0.02 250);  /* Card text */
-
-    --destructive: oklch(0.55 0.22 25);       /* Destructive red */
-    --destructive-foreground: oklch(1 0 0);   /* White text */
-  }
-
-  /* Dark Theme */
-  [data-theme='dark'] {
-    --bg-app: oklch(0.15 0.02 250);           /* Deep dark blue-grey */
-    --bg-subtle: oklch(0.18 0.02 250);        /* Slightly lighter */
-    --bg-surface: oklch(0.21 0.02 250);       /* Card background */
-    --bg-elevated: oklch(0.25 0.03 250);      /* Hover states, modals */
-
-    --text-primary: oklch(0.95 0.01 250);     /* Light text */
-    --text-secondary: oklch(0.65 0.01 250);   /* Muted text */
-    --text-inverse: oklch(0.15 0.02 250);     /* Dark text for light backgrounds */
-
-    --border-subtle: oklch(0.30 0.02 250);    /* Dark border */
-    --border-strong: oklch(0.40 0.03 250);    /* Stronger border */
-
-    --primary: oklch(0.6 0.2 250);            /* Vibrant Blue */
-    --primary-hover: oklch(0.55 0.2 250);     /* Slightly darker */
-    --primary-foreground: oklch(1 0 0);       /* White text */
-
-    --danger: oklch(0.55 0.22 25);            /* Red */
-    --danger-hover: oklch(0.5 0.22 25);       /* Darker red */
-    --danger-foreground: oklch(1 0 0);        /* White text */
-
-    --muted: oklch(0.25 0.02 250);            /* Muted background */
-    --muted-foreground: oklch(0.65 0.01 250); /* Muted text */
-
-    --card: oklch(0.21 0.02 250);             /* Card background */
-    --card-foreground: oklch(0.95 0.01 250);  /* Card text */
-
-    --destructive: oklch(0.55 0.22 25);       /* Destructive red */
-    --destructive-foreground: oklch(1 0 0);   /* White text */
-  }
-}
-
-@theme {
-  /* Map CSS variables to Tailwind theme */
-  --color-primary*: var(--primary);
-  --color-primary-hover: var(--primary-hover);
-  --color-primary-foreground: var(--primary-foreground);
-  
-  --color-danger*: var(--danger);
-  --color-danger-hover: var(--danger-hover);
-  --color-danger-foreground: var(--danger-foreground);
-  
-  --color-background*: var(--bg-app);
-  --color-background-subtle: var(--bg-subtle);
-  --color-background-surface: var(--bg-surface);
-  --color-background-elevated: var(--bg-elevated);
-
-  --color-foreground*: var(--text-primary);
-  --color-foreground-secondary: var(--text-secondary);
-  --color-foreground-inverse: var(--text-inverse);
-
-  --color-border*: var(--border-subtle);
-  --color-border-strong: var(--border-strong);
-
-  --color-muted*: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-
-  --color-card*: var(--card);
+  /* Core semantic colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-
-  --color-destructive*: var(--destructive);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
-  --font-family-sans: var(--font-sans);
-  --font-family-mono: var(--font-mono);
+  /* Extended semantic colors */
+  --color-background-surface: var(--background-surface);
+  --color-background-elevated: var(--background-elevated);
+  --color-background-subtle: var(--background-subtle);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-border-strong: var(--border-strong);
+  --color-border-subtle: var(--border-subtle);
+  --color-success: var(--success);
 }
 
 @layer base {
-  body {
-    background-color: var(--bg-app);
-    color: var(--text-primary);
-    font-family: var(--font-sans);
+  :root {
+    --radius: 0.5rem;
+
+    /* Light theme (default) */
+    --background: hsl(0 0% 100%);
+    --foreground: hsl(240 10% 3.9%);
+    --card: hsl(0 0% 100%);
+    --card-foreground: hsl(240 10% 3.9%);
+    --popover: hsl(0 0% 100%);
+    --popover-foreground: hsl(240 10% 3.9%);
+
+    /* Primary - Blue */
+    --primary: hsl(221.2 83.2% 53.3%);
+    --primary-foreground: hsl(210 40% 98%);
+
+    --secondary: hsl(240 4.8% 95.9%);
+    --secondary-foreground: hsl(240 5.9% 10%);
+
+    --muted: hsl(240 4.8% 95.9%);
+    --muted-foreground: hsl(240 3.8% 46.1%);
+
+    --accent: hsl(240 4.8% 95.9%);
+    --accent-foreground: hsl(240 5.9% 10%);
+
+    --destructive: hsl(0 84.2% 60.2%);
+    --destructive-foreground: hsl(0 0% 98%);
+
+    --border: hsl(240 5.9% 90%);
+    --input: hsl(240 5.9% 90%);
+    --ring: hsl(221.2 83.2% 53.3%);
+
+    /* Extended semantic tokens */
+    --background-surface: hsl(0 0% 100%);
+    --background-elevated: hsl(240 4.8% 95.9%);
+    --background-subtle: hsl(240 5.9% 97%);
+    --foreground-secondary: hsl(240 3.8% 46.1%);
+    --danger: hsl(0 84.2% 60.2%);
+    --danger-foreground: hsl(0 0% 98%);
+    --border-strong: hsl(240 5.9% 80%);
+    --border-subtle: hsl(240 5.9% 90%);
+    --success: hsl(142 76% 36%);
+  }
+
+  .dark {
+    /* Dark theme */
+    --background: hsl(224 71.4% 4.1%);
+    --foreground: hsl(210 40% 98%);
+    --card: hsl(224 71.4% 4.1%);
+    --card-foreground: hsl(210 40% 98%);
+    --popover: hsl(224 71.4% 4.1%);
+    --popover-foreground: hsl(210 40% 98%);
+
+    /* Primary - Blue (brighter in dark mode) */
+    --primary: hsl(217.2 91.2% 59.8%);
+    --primary-foreground: hsl(222.2 47.4% 11.2%);
+
+    --secondary: hsl(217.2 32.6% 17.5%);
+    --secondary-foreground: hsl(210 40% 98%);
+
+    --muted: hsl(217.2 32.6% 17.5%);
+    --muted-foreground: hsl(215 20.2% 65.1%);
+
+    --accent: hsl(217.2 32.6% 17.5%);
+    --accent-foreground: hsl(210 40% 98%);
+
+    --destructive: hsl(0 62.8% 30.6%);
+    --destructive-foreground: hsl(210 40% 98%);
+
+    --border: hsl(217.2 32.6% 17.5%);
+    --input: hsl(217.2 32.6% 17.5%);
+    --ring: hsl(224.3 76.3% 48%);
+
+    /* Extended semantic tokens */
+    --background-surface: hsl(222 47% 8%);
+    --background-elevated: hsl(217.2 32.6% 14%);
+    --background-subtle: hsl(217.2 32.6% 11%);
+    --foreground-secondary: hsl(215 20.2% 65.1%);
+    --danger: hsl(0 62.8% 30.6%);
+    --danger-foreground: hsl(210 40% 98%);
+    --border-strong: hsl(217.2 32.6% 25%);
+    --border-subtle: hsl(217.2 32.6% 20%);
+    --success: hsl(142 76% 30%);
   }
 }
 

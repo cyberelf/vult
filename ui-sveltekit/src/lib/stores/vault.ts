@@ -131,6 +131,7 @@ function createVaultStore() {
      * Lock vault and clear sensitive data
      */
     lock: async () => {
+      update((s) => ({ ...s, loading: true, error: null }));
       try {
         await tauri.lockVault();
         set({
@@ -144,6 +145,7 @@ function createVaultStore() {
       } catch (error) {
         update((s) => ({
           ...s,
+          loading: false,
           error: error instanceof Error ? error.message : 'Failed to lock vault',
         }));
       }

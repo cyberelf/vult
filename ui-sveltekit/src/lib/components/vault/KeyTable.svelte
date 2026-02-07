@@ -61,7 +61,7 @@
           <th class="p-6 text-sm font-semibold text-foreground-secondary uppercase tracking-wider">
             Description
           </th>
-          <th class="p-6 text-center text-sm font-semibold text-foreground-secondary uppercase tracking-wider w-[140px]">
+          <th class="p-6 text-center text-sm font-semibold text-foreground-secondary uppercase tracking-wider">
             Actions
           </th>
         </tr>
