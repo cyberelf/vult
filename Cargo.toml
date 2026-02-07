@@ -45,7 +45,7 @@ dirs = "5.0.1"
 base64 = "0.22"
 
 # GUI dependencies (optional, for vult-gui binary)
-tauri = { version = "2.1", features = ["devtools"], optional = true }
+tauri = { version = "2.10", features = ["devtools"], optional = true }
 tauri-plugin-shell = { version = "2", optional = true }
 
 # CLI dependencies (optional, for vult binary)
