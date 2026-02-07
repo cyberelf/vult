@@ -4,31 +4,29 @@
 //! particularly the re-encryption behavior when app_name or key_name changes.
 
 use std::path::PathBuf;
-use std::sync::Arc;
 
-use vult::services::{key_service::KeyService, key_service::UpdateKeyRequest};
-use vult::database::VaultDb;
-use vult::crypto_service::CryptoService;
-use vult::auth_service::AuthService;
+use vult::services::{VaultManager, key_service::UpdateKeyRequest};
 
-/// Helper to create test services with a temporary database
-async fn setup_test_services(test_name: &str) -> (KeyService, AuthService) {
+/// Helper to create test vault with a temporary database
+async fn setup_test_vault(test_name: &str) -> (VaultManager, PathBuf) {
     let db_path = get_test_db_path(test_name);
-    let db = Arc::new(VaultDb::new(&db_path.to_string_lossy()).await.unwrap());
-    let crypto = Arc::new(CryptoService::new());
-    let auth = Arc::new(AuthService::new(Arc::clone(&db), Arc::clone(&crypto)));
+    let db_url = format!("sqlite://{}?mode=rwc", db_path.display());
+
+    let vault = VaultManager::new(&db_url)
+        .await
+        .expect("Failed to create vault");
 
     // Initialize vault
-    auth.init_vault("test-pin-123").await.unwrap();
+    vault.auth().init_vault("test-pin-123")
+        .await
+        .expect("Failed to init vault");
 
-    let key_service = KeyService::new(Arc::clone(&db), Arc::clone(&crypto), Arc::clone(&auth));
+    // Unlock vault for testing
+    vault.auth().unlock("test-pin-123")
+        .await
+        .expect("Failed to unlock vault");
 
-    // Clean up the database file after test
-    tokio::spawn(async move {
-        let _ = std::fs::remove_file(db_path);
-    });
-
-    (key_service, auth)
+    (vault, db_path)
 }
 
 /// Helper to get a test database path
@@ -43,16 +41,16 @@ fn get_test_db_path(test_name: &str) -> PathBuf {
 /// Test re-encryption when app_name changes during inline editing
 #[tokio::test]
 async fn test_inline_edit_app_name_change() {
-    let (service, _auth) = setup_test_services("app_name_change").await;
+    let (vault, db_path) = setup_test_vault("app_name_change").await;
 
     // Create a key with app_name "github"
-    let id = service
+    let id = vault.keys()
         .create(Some("github"), "token", "ghp_secret123", None, None)
         .await
-        .unwrap();
+        .expect("Failed to create key");
 
     // Verify the key exists
-    let original_key = service.get("github", "token").await.unwrap();
+    let original_key = vault.keys().get("github", "token").await.expect("Key not found");
     assert_eq!(original_key.app_name, Some("github".to_string()));
     assert_eq!(original_key.key_name, "token");
     assert_eq!(original_key.key_value, "ghp_secret123");
@@ -63,32 +61,35 @@ async fn test_inline_edit_app_name_change() {
         ..Default::default()
     };
 
-    service.update(&id, update_request).await.unwrap();
+    vault.keys().update(&id, update_request).await.expect("Failed to update key");
 
     // Verify the key can now be accessed with new app_name
-    let updated_key = service.get("gitlab", "token").await.unwrap();
+    let updated_key = vault.keys().get("gitlab", "token").await.expect("Key not found");
     assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
     assert_eq!(updated_key.key_name, "token");
     assert_eq!(updated_key.key_value, "ghp_secret123");
 
     // Verify old app_name no longer works
-    let result = service.get("github", "token").await;
+    let result = vault.keys().get("github", "token").await;
     assert!(result.is_err());
+
+    // Cleanup
+    let _ = std::fs::remove_file(db_path);
 }
 
 /// Test re-encryption when key_name changes during inline editing
 #[tokio::test]
 async fn test_inline_edit_key_name_change() {
-    let (service, _auth) = setup_test_services("key_name_change").await;
+    let (vault, db_path) = setup_test_vault("key_name_change").await;
 
     // Create a key with key_name "token"
-    let id = service
+    let id = vault.keys()
         .create(Some("github"), "token", "ghp_secret123", None, None)
         .await
-        .unwrap();
+        .expect("Failed to create key");
 
     // Verify the key exists
-    let original_key = service.get("github", "token").await.unwrap();
+    let original_key = vault.keys().get("github", "token").await.expect("Key not found");
     assert_eq!(original_key.app_name, Some("github".to_string()));
     assert_eq!(original_key.key_name, "token");
     assert_eq!(original_key.key_value, "ghp_secret123");
@@ -99,32 +100,35 @@ async fn test_inline_edit_key_name_change() {
         ..Default::default()
     };
 
-    service.update(&id, update_request).await.unwrap();
+    vault.keys().update(&id, update_request).await.expect("Failed to update key");
 
     // Verify the key can now be accessed with new key_name
-    let updated_key = service.get("github", "personal-token").await.unwrap();
+    let updated_key = vault.keys().get("github", "personal-token").await.expect("Key not found");
     assert_eq!(updated_key.app_name, Some("github".to_string()));
     assert_eq!(updated_key.key_name, "personal-token");
     assert_eq!(updated_key.key_value, "ghp_secret123");
 
     // Verify old key_name no longer works
-    let result = service.get("github", "token").await;
+    let result = vault.keys().get("github", "token").await;
     assert!(result.is_err());
+
+    // Cleanup
+    let _ = std::fs::remove_file(db_path);
 }
 
 /// Test re-encryption when both app_name and key_name change during inline editing
 #[tokio::test]
 async fn test_inline_edit_both_name_changes() {
-    let (service, _auth) = setup_test_services("both_name_change").await;
+    let (vault, db_path) = setup_test_vault("both_name_change").await;
 
     // Create a key with app_name "github" and key_name "token"
-    let id = service
+    let id = vault.keys()
         .create(Some("github"), "token", "ghp_secret123", None, None)
         .await
-        .unwrap();
+        .expect("Failed to create key");
 
     // Verify the key exists
-    let original_key = service.get("github", "token").await.unwrap();
+    let original_key = vault.keys().get("github", "token").await.expect("Key not found");
     assert_eq!(original_key.app_name, Some("github".to_string()));
     assert_eq!(original_key.key_name, "token");
     assert_eq!(original_key.key_value, "ghp_secret123");
@@ -136,35 +140,38 @@ async fn test_inline_edit_both_name_changes() {
         ..Default::default()
     };
 
-    service.update(&id, update_request).await.unwrap();
+    vault.keys().update(&id, update_request).await.expect("Failed to update key");
 
     // Verify the key can now be accessed with new names
-    let updated_key = service.get("gitlab", "access-token").await.unwrap();
+    let updated_key = vault.keys().get("gitlab", "access-token").await.expect("Key not found");
     assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
     assert_eq!(updated_key.key_name, "access-token");
     assert_eq!(updated_key.key_value, "ghp_secret123");
 
     // Verify old names no longer work
-    let result1 = service.get("github", "token").await;
+    let result1 = vault.keys().get("github", "token").await;
     assert!(result1.is_err());
 
-    let result2 = service.get("github", "access-token").await;
+    let result2 = vault.keys().get("github", "access-token").await;
     assert!(result2.is_err());
 
-    let result3 = service.get("gitlab", "token").await;
+    let result3 = vault.keys().get("gitlab", "token").await;
     assert!(result3.is_err());
+
+    // Cleanup
+    let _ = std::fs::remove_file(db_path);
 }
 
 /// Test re-encryption when app_name changes to None
 #[tokio::test]
 async fn test_inline_edit_app_name_to_none() {
-    let (service, _auth) = setup_test_services("app_name_to_none").await;
+    let (vault, db_path) = setup_test_vault("app_name_to_none").await;
 
     // Create a key with app_name "github"
-    let id = service
+    let id = vault.keys()
         .create(Some("github"), "token", "ghp_secret123", None, None)
         .await
-        .unwrap();
+        .expect("Failed to create key");
 
     // Update app_name to None (simulating inline edit)
     let update_request = UpdateKeyRequest {
@@ -172,29 +179,32 @@ async fn test_inline_edit_app_name_to_none() {
         ..Default::default()
     };
 
-    service.update(&id, update_request).await.unwrap();
+    vault.keys().update(&id, update_request).await.expect("Failed to update key");
 
     // Verify the key can be accessed with no app_name
-    let updated_key = service.get("", "token").await.unwrap();
+    let updated_key = vault.keys().get("", "token").await.expect("Key not found");
     assert!(updated_key.app_name.is_none());
     assert_eq!(updated_key.key_name, "token");
     assert_eq!(updated_key.key_value, "ghp_secret123");
 
     // Verify old app_name no longer works
-    let result = service.get("github", "token").await;
+    let result = vault.keys().get("github", "token").await;
     assert!(result.is_err());
+
+    // Cleanup
+    let _ = std::fs::remove_file(db_path);
 }
 
 /// Test re-encryption when app_name changes from None to Some
 #[tokio::test]
 async fn test_inline_edit_from_no_app_name() {
-    let (service, _auth) = setup_test_services("no_app_name").await;
+    let (vault, db_path) = setup_test_vault("no_app_name").await;
 
     // Create a key with no app_name
-    let id = service
+    let id = vault.keys()
         .create(None, "token", "ghp_secret123", None, None)
         .await
-        .unwrap();
+        .expect("Failed to create key");
 
     // Update app_name to "gitlab" (simulating inline edit)
     let update_request = UpdateKeyRequest {
@@ -202,29 +212,32 @@ async fn test_inline_edit_from_no_app_name() {
         ..Default::default()
     };
 
-    service.update(&id, update_request).await.unwrap();
+    vault.keys().update(&id, update_request).await.expect("Failed to update key");
 
     // Verify the key can be accessed with new app_name
-    let updated_key = service.get("gitlab", "token").await.unwrap();
+    let updated_key = vault.keys().get("gitlab", "token").await.expect("Key not found");
     assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
     assert_eq!(updated_key.key_name, "token");
     assert_eq!(updated_key.key_value, "ghp_secret123");
 
     // Verify old access method no longer works
-    let result = service.get("", "token").await;
+    let result = vault.keys().get("", "token").await;
     assert!(result.is_err());
+
+    // Cleanup
+    let _ = std::fs::remove_file(db_path);
 }
 
 /// Test re-encryption with value change and app_name change
 #[tokio::test]
 async fn test_inline_edit_value_and_app_name_change() {
-    let (service, _auth) = setup_test_services("value_app_change").await;
+    let (vault, db_path) = setup_test_vault("value_app_change").await;
 
     // Create a key with app_name "github" and value "old_value"
-    let id = service
+    let id = vault.keys()
         .create(Some("github"), "token", "old_value", None, None)
         .await
-        .unwrap();
+        .expect("Failed to create key");
 
     // Update both app_name and value (simulating inline edit)
     let update_request = UpdateKeyRequest {
@@ -233,23 +246,26 @@ async fn test_inline_edit_value_and_app_name_change() {
         ..Default::default()
     };
 
-    service.update(&id, update_request).await.unwrap();
+    vault.keys().update(&id, update_request).await.expect("Failed to update key");
 
     // Verify the key can be accessed with new app_name and has new value
-    let updated_key = service.get("gitlab", "token").await.unwrap();
+    let updated_key = vault.keys().get("gitlab", "token").await.expect("Key not found");
     assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
     assert_eq!(updated_key.key_name, "token");
     assert_eq!(updated_key.key_value, "new_value");
 
     // Verify old app_name no longer works
-    let result = service.get("github", "token").await;
+    let result = vault.keys().get("github", "token").await;
     assert!(result.is_err());
+
+    // Cleanup
+    let _ = std::fs::remove_file(db_path);
 }
 
 /// Test error handling when updating non-existent key
 #[tokio::test]
 async fn test_inline_edit_non_existent_key() {
-    let (service, _auth) = setup_test_services("non_existent").await;
+    let (vault, db_path) = setup_test_vault("non_existent").await;
 
     // Try to update a non-existent key
     let update_request = UpdateKeyRequest {
@@ -257,20 +273,23 @@ async fn test_inline_edit_non_existent_key() {
         ..Default::default()
     };
 
-    let result = service.update("non-existent-id", update_request).await;
+    let result = vault.keys().update("non-existent-id", update_request).await;
     assert!(result.is_err());
+
+    // Cleanup
+    let _ = std::fs::remove_file(db_path);
 }
 
 /// Test partial update - only description (no re-encryption needed)
 #[tokio::test]
 async fn test_inline_edit_metadata_only() {
-    let (service, _auth) = setup_test_services("metadata_only").await;
+    let (vault, db_path) = setup_test_vault("metadata_only").await;
 
     // Create a key with description
-    let id = service
+    let id = vault.keys()
         .create(Some("github"), "token", "ghp_secret123", None, Some("Old description"))
         .await
-        .unwrap();
+        .expect("Failed to create key");
 
     // Update only description (should not trigger re-encryption)
     let update_request = UpdateKeyRequest {
@@ -278,12 +297,15 @@ async fn test_inline_edit_metadata_only() {
         ..Default::default()
     };
 
-    service.update(&id, update_request).await.unwrap();
+    vault.keys().update(&id, update_request).await.expect("Failed to update key");
 
     // Verify only description changed
-    let updated_key = service.get("github", "token").await.unwrap();
+    let updated_key = vault.keys().get("github", "token").await.expect("Key not found");
     assert_eq!(updated_key.app_name, Some("github".to_string()));
     assert_eq!(updated_key.key_name, "token");
     assert_eq!(updated_key.key_value, "ghp_secret123");
     assert_eq!(updated_key.description, Some("New description".to_string()));
+
+    // Cleanup
+    let _ = std::fs::remove_file(db_path);
 }

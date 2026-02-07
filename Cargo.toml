@@ -58,7 +58,7 @@ colored = { version = "2.1", optional = true }
 ctrlc = { version = "3.4", optional = true }
 
 [features]
-default = ["gui"]
+default = ["gui", "cli"]
 gui = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-build", "custom-protocol"]
 cli = ["dep:clap", "dep:clap_complete", "dep:dialoguer", "dep:rpassword", "dep:comfy-table", "dep:colored", "dep:ctrlc"]
 custom-protocol = ["tauri/custom-protocol"]

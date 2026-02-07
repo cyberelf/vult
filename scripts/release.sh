@@ -46,7 +46,7 @@ cargo test --lib || { echo -e "${RED}Tests failed${NC}"; exit 1; }
 
 # Run clippy
 echo "Running clippy..."
-cargo clippy --lib --features gui -- -D warnings || { echo -e "${RED}Clippy failed${NC}"; exit 1; }
+cargo clippy --lib --features gui,cli -- -D warnings || { echo -e "${RED}Clippy failed${NC}"; exit 1; }
 
 # Run cargo audit if available
 if command -v cargo-audit &> /dev/null; then
