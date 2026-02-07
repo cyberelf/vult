@@ -1,7 +1,7 @@
 <script lang="ts">
   import { vaultStore } from '$lib/stores/vault';
   import { Button } from '$lib/components/ui/shadcn/button';
-  import { Lock } from 'lucide-svelte';
+  import { Lock, Tag } from 'lucide-svelte';
   import SearchBar from './SearchBar.svelte';
   import KeyTable from './KeyTable.svelte';
   import EmptyState from './EmptyState.svelte';
@@ -12,13 +12,21 @@
   import ViewKeyModal from '$lib/components/modals/ViewKeyModal.svelte';
   import DeleteModal from '$lib/components/modals/DeleteModal.svelte';
   import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
+
+  const VERSION = '0.2.0';
 </script>
 
 <div class="vault-container container max-w-[1200px] mx-auto px-4 py-8 space-y-6">
   <!-- Header -->
   <header class="flex justify-between items-center">
     <div>
-      <h1 class="text-3xl font-bold">API Keys</h1>
+      <div class="flex items-center gap-3">
+        <h1 class="text-3xl font-bold">API Keys</h1>
+        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+          <Tag class="w-3 h-3" />
+          v{VERSION}
+        </span>
+      </div>
       <p class="text-muted-foreground">Manage your encrypted API keys</p>
     </div>
     <div class="flex gap-3 items-center">

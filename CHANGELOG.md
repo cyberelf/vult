@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-07
+
 ### Added
 - **CLI Binary**: Full command-line interface (`vult`) for vault operations
   - `vult init` - Initialize vault with PIN
@@ -31,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced rustdoc comments
 - **Property-Based Testing**: 11 proptest tests for crypto operations
 - **Service Unit Tests**: 43 tests for AuthService, KeyService, VaultManager
+- **Version Badge**: Added version indicator (v0.2.0) to UI header
 
 ### Changed
 - **BREAKING**: Migrated frontend from vanilla JavaScript to SvelteKit
@@ -90,4 +93,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Copy keys to clipboard with visual feedback
 - Inline editing in table view
 
+[0.2.0]: https://github.com/cyberelf/vult/releases/tag/v0.2.0
 [0.1.0]: https://github.com/yourusername/vult/releases/tag/v0.1.0

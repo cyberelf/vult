@@ -7,6 +7,7 @@ license = "MIT"
 repository = "https://github.com/cyberelf/vult"
 keywords = ["security", "vault", "api-keys", "encryption"]
 categories = ["cryptography", "command-line-utilities"]
+default-run = "vult-gui"
 
 [lib]
 name = "vult"

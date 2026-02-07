@@ -64,9 +64,10 @@ cargo build --lib --release
 echo "Building CLI..."
 cargo build --bin vult --features cli --release
 
-# Build GUI
-echo "Building GUI..."
-cargo build --bin vult-gui --features gui --release
+# Build GUI with Tauri (generates installers)
+echo "Building GUI with Tauri installers..."
+npm install --prefix ui-sveltekit 2>/dev/null || true
+cargo tauri build --features gui
 
 echo -e "${YELLOW}Packaging release...${NC}"
 
@@ -76,6 +77,52 @@ cp "target/release/vult-gui${EXE_EXT}" "$DIST_DIR/"
 
 # Copy library (optional)
 cp "target/release/libvult.${LIB_EXT}" "$DIST_DIR/" 2>/dev/null || true
+
+# Copy installers based on platform
+echo "Copying installer packages..."
+if [[ "$PLATFORM" == "windows-x86_64" ]]; then
+    # Copy MSI installer
+    MSI_FILE=$(find target/release/bundle/msi -name "Vult_${VERSION}_*.msi" 2>/dev/null | head -1)
+    if [ -f "$MSI_FILE" ]; then
+        cp "$MSI_FILE" "$DIST_DIR/"
+        echo "  ✓ MSI installer: $(basename "$MSI_FILE")"
+    fi
+
+    # Copy NSIS installer
+    NSIS_FILE=$(find target/release/bundle/nsis -name "Vult_${VERSION}_*-setup.exe" 2>/dev/null | head -1)
+    if [ -f "$NSIS_FILE" ]; then
+        cp "$NSIS_FILE" "$DIST_DIR/"
+        echo "  ✓ NSIS installer: $(basename "$NSIS_FILE")"
+    fi
+elif [[ "$PLATFORM" == "macos-x86_64" ]]; then
+    # Copy DMG installer
+    DMG_FILE=$(find target/release/bundle/dmg -name "Vult_${VERSION}_*.dmg" 2>/dev/null | head -1)
+    if [ -f "$DMG_FILE" ]; then
+        cp "$DMG_FILE" "$DIST_DIR/"
+        echo "  ✓ DMG installer: $(basename "$DMG_FILE")"
+    fi
+
+    # Copy .app bundle (optionally)
+    APP_BUNDLE=$(find target/release/bundle/macos -name "Vult.app" 2>/dev/null | head -1)
+    if [ -d "$APP_BUNDLE" ]; then
+        cp -r "$APP_BUNDLE" "$DIST_DIR/"
+        echo "  ✓ App bundle: Vult.app"
+    fi
+elif [[ "$PLATFORM" == "linux-x86_64" ]]; then
+    # Copy Debian package
+    DEB_FILE=$(find target/release/bundle/deb -name "vult_${VERSION}_*.deb" 2>/dev/null | head -1)
+    if [ -f "$DEB_FILE" ]; then
+        cp "$DEB_FILE" "$DIST_DIR/"
+        echo "  ✓ Debian package: $(basename "$DEB_FILE")"
+    fi
+
+    # Copy AppImage
+    APPIMAGE_FILE=$(find target/release/bundle/appimage -name "vult_${VERSION}_*.AppImage" 2>/dev/null | head -1)
+    if [ -f "$APPIMAGE_FILE" ]; then
+        cp "$APPIMAGE_FILE" "$DIST_DIR/"
+        echo "  ✓ AppImage: $(basename "$APPIMAGE_FILE")"
+    fi
+fi
 
 # Copy documentation
 cp README.md "$DIST_DIR/"
@@ -105,6 +152,9 @@ echo ""
 echo "Artifacts:"
 echo "  - dist/${ARCHIVE_NAME}"
 echo "  - dist/${ARCHIVE_NAME}.sha256"
+echo ""
+echo "Package contents:"
+ls -lh "$DIST_DIR/" | grep -E "\.(exe|msi|dmg|deb|AppImage)$" || true
 echo ""
 echo "Binary sizes:"
 ls -lh "$DIST_DIR/vult${EXE_EXT}" "$DIST_DIR/vult-gui${EXE_EXT}"
