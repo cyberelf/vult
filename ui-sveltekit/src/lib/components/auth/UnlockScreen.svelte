@@ -96,15 +96,14 @@
           <span>{processing || $isLoading ? 'Unlocking...' : 'Unlock with Windows Hello'}</span>
         </Button>
 
-        <div class="text-center">
-          <button
-            onclick={showPinFallback}
-            class="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            disabled={processing || $isLoading}
-          >
-            Use PIN instead
-          </button>
-        </div>
+        <Button
+          onclick={showPinFallback}
+          variant="secondary"
+          class="w-full"
+          disabled={processing || $isLoading}
+        >
+          Use PIN instead
+        </Button>
       </div>
     {:else}
       <!-- PIN unlock form -->
@@ -126,23 +125,30 @@
         <Button
           type="submit"
           variant="primary"
-          class="w-full"
+          class="w-full py-8 border-2 border-primary/20 flex items-center justify-center"
           disabled={processing || $isLoading || pin.length < 6}
         >
-          {processing || $isLoading ? 'Unlocking...' : 'Unlock'}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6 mr-2"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+          </svg>
+          <span>{processing || $isLoading ? 'Unlocking...' : 'Unlock'}</span>
         </Button>
 
         {#if biometricReady}
-          <div class="text-center">
-            <button
-              onclick={() => showPinInput = false}
-              type="button"
-              class="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              disabled={processing || $isLoading}
-            >
-              Use Windows Hello instead
-            </button>
-          </div>
+          <Button
+            onclick={() => showPinInput = false}
+            type="button"
+            variant="secondary"
+            class="w-full"
+            disabled={processing || $isLoading}
+          >
+            Use Windows Hello instead
+          </Button>
         {/if}
       </form>
     {/if}

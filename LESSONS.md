@@ -357,3 +357,129 @@ When implementing authentication or security features:
 - **Documentation**: Exposed gap in documenting authentication patterns
 
 ---
+## 2026-02-10: Windows Hello Modal Z-Index Issue
+
+### Problem
+Windows Hello biometric prompt was appearing **behind** the Vult application window instead of on top, making it impossible for users to interact with it.
+
+### Root Cause
+**Desktop apps MUST use IUserConsentVerifierInterop with HWND parameter, not the UWP API.**
+
+The windows-rs crate `UserConsentVerifier::RequestVerificationAsync()` is the UWP API that doesn't support window parenting. Desktop applications need the `IUserConsentVerifierInterop::RequestVerificationForWindowAsync(HWND, message)` interface to properly parent the modal to the application window.
+
+### Failed Approaches
+
+#### Attempt 1: Set Always-On-Top (❌ MADE IT WORSE!)
+```rust
+window.set_always_on_top(true)?;
+// Call Windows Hello...
+window.set_always_on_top(false).ok();
+```
+**Result**: Modal completely blocked behind window, completely inaccessible.
+
+#### Attempt 2: Just Focus Without Always-On-Top (❌ STILL BROKEN)
+```rust
+window.set_focus().ok();
+tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+// Call Windows Hello...
+```
+**Result**: Modal still appeared under the window.
+
+#### Attempt 3: Comprehensive Window Management (❌ USER CONFIRMED STILL BROKEN)
+```rust
+window.set_always_on_top(false).ok();
+window.request_user_attention(Some(tauri::UserAttentionType::Informational)).ok();
+window.set_focus().ok();
+tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+auth_manager.vault().auth().unlock_with_biometric(&message).await?;
+window.set_focus().ok();
+```
+**Result**: User confirmed this doesn't work. Window management APIs don't control Windows Hello modal z-order.
+
+### Working Solution: Use Desktop API with HWND ✅
+
+Microsoft documentation clearly states: Desktop applications MUST use `IUserConsentVerifierInterop::RequestVerificationForWindowAsync(HWND, message)` instead of the UWP `RequestVerificationAsync(message)`.
+
+**Implementation**:
+
+1. **Add Dependencies** (`Cargo.toml`):
+```toml
+raw-window-handle = { version = "0.6", optional = true }
+windows = { version = "0.58", features = [
+    "Win32_System_WinRT",  # For IUserConsentVerifierInterop
+    # ... other features
+]}
+```
+
+2. **Extract HWND from Tauri Window** (`src/gui/commands.rs`):
+```rust
+use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+let hwnd = window
+    .window_handle()
+    .ok()
+    .and_then(|handle| match handle.as_raw() {
+        RawWindowHandle::Win32(win32_handle) => Some(win32_handle.hwnd.get() as isize),
+        _ => None,
+    });
+
+if let Some(hwnd_value) = hwnd {
+    auth_manager.vault().auth()
+        .unlock_with_biometric_with_window(&message, hwnd_value).await?;
+}
+```
+
+3. **Use Desktop Interop API** (`src/biometric/windows_hello.rs`):
+```rust
+use windows::Foundation::IAsyncOperation;
+use windows::Win32::System::WinRT::IUserConsentVerifierInterop;
+
+async fn verify(&self, message: &str) -> Result<bool> {
+    let message_hstring = windows::core::HSTRING::from(message);
+
+    if let Some(hwnd_value) = self.window_handle {
+        let hwnd = HWND(hwnd_value as *mut _);
+        
+        // Get the desktop-specific interface
+        let factory: IUserConsentVerifierInterop = 
+            windows::core::factory::<UserConsentVerifier, IUserConsentVerifierInterop>()
+                .map_err(|_| VaultError::BiometricFailed)?;
+        
+        // Use the desktop API with HWND parameter
+        let async_op: IAsyncOperation<UserConsentVerificationResult> = unsafe {
+            factory.RequestVerificationForWindowAsync(hwnd, &message_hstring)
+                .map_err(|_| VaultError::BiometricFailed)?
+        };
+        
+        let result = async_op.get().map_err(|_| VaultError::BiometricFailed)?;
+        Ok(map_verification_result(result))
+    } else {
+        // Fallback to UWP API
+        let async_op = UserConsentVerifier::RequestVerificationAsync(&message_hstring)
+            .map_err(|_| VaultError::BiometricFailed)?;
+        let result = async_op.get().map_err(|_| VaultError::BiometricFailed)?;
+        Ok(map_verification_result(result))
+    }
+}
+```
+
+### Why This Works
+1. **Proper Desktop API**: Uses Windows Desktop-specific interface instead of UWP
+2. **Window Parenting**: HWND parameter establishes parent-child relationship
+3. **Z-Order Management**: Windows automatically handles modal layering when given HWND
+4. **No Window Choreography Needed**: No delays, no focus tricks, just proper API usage
+
+### Key Lessons
+1. **Check for Desktop vs UWP APIs**: Many Windows APIs have separate desktop variants
+2. **Window Management APIs Don't Control System Modals**: set_always_on_top, request_user_attention, etc. don't affect Windows Hello
+3. **HWND is Critical**: Desktop apps need to pass window handles to system APIs for proper parenting
+4. **Read Microsoft Documentation**: The docs clearly specify which API to use for desktop apps
+5. **Don't Rely on Workarounds**: Proper API usage is simpler and more reliable than window management hacks
+
+### References
+- Microsoft UserConsentVerifier Docs: https://learn.microsoft.com/en-us/uwp/api/windows.security.credentials.ui.userconsentverifier
+- IUserConsentVerifierInterop (Desktop API): Mentioned in "Desktop apps should use RequestVerificationForWindowAsync"
+- raw-window-handle crate: https://docs.rs/raw-window-handle/
+- Tauri Window Handle: https://docs.rs/tauri/latest/tauri/struct.Window.html#method.window_handle
+
+---

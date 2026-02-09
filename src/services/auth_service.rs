@@ -526,11 +526,48 @@ impl AuthService {
     /// ```
     #[cfg(feature = "windows-biometric")]
     pub async fn unlock_with_biometric(&self, message: &str) -> Result<()> {
-        // Check if provider and credential store are configured
-        let provider = self.biometric_provider.as_ref()
-            .ok_or(VaultError::BiometricFailed)?;
+        self.unlock_with_biometric_impl(message, None).await
+    }
+
+    /// Unlocks the vault using biometric authentication with a parent window handle.
+    ///
+    /// This variant accepts a window handle (HWND) for proper desktop app integration.
+    /// The Windows Hello modal will be correctly parented to the specified window.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - Message to display in the biometric prompt
+    /// * `window_handle` - Windows HWND as isize for proper modal parenting
+    #[cfg(feature = "windows-biometric")]
+    pub async fn unlock_with_biometric_with_window(
+        &self,
+        message: &str,
+        window_handle: isize,
+    ) -> Result<()> {
+        self.unlock_with_biometric_impl(message, Some(window_handle)).await
+    }
+
+    /// Internal implementation for biometric unlock with optional window handle.
+    #[cfg(feature = "windows-biometric")]
+    async fn unlock_with_biometric_impl(
+        &self,
+        message: &str,
+        window_handle: Option<isize>,
+    ) -> Result<()> {
+        use crate::biometric::WindowsHelloProvider;
+
+        // Check if credential store is configured
         let credential_store = self.credential_store.as_ref()
             .ok_or(VaultError::BiometricFailed)?;
+
+        // Create provider with or without window handle
+        let provider: Box<dyn BiometricProvider> = if let Some(hwnd) = window_handle {
+            // Desktop mode with HWND for proper modal parenting
+            Box::new(WindowsHelloProvider::with_window_handle(hwnd))
+        } else {
+            // UWP mode or fallback without window handle
+            Box::new(WindowsHelloProvider::new())
+        };
 
         // Verify biometric FIRST - before accessing any credentials
         let verified = provider.verify(message).await?;

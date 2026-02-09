@@ -245,15 +245,38 @@ pub async fn is_biometric_storage_enabled(
 #[tauri::command]
 pub async fn unlock_with_biometric(
     message: String,
+    window: tauri::Window,
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<CommandResponse<()>, String> {
-    auth_manager
-        .vault()
-        .auth()
-        .unlock_with_biometric(&message)
-        .await
-        .map_err(|e| e.to_string())?;
-
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    
+    // Extract HWND from Tauri window for proper Windows Hello modal parenting
+    let hwnd = window
+        .window_handle()
+        .ok()
+        .and_then(|handle| match handle.as_raw() {
+            RawWindowHandle::Win32(win32_handle) => Some(win32_handle.hwnd.get() as isize),
+            _ => None,
+        });
+    
+    // Pass HWND to Windows Hello for proper desktop app integration
+    if let Some(hwnd_value) = hwnd {
+        auth_manager
+            .vault()
+            .auth()
+            .unlock_with_biometric_with_window(&message, hwnd_value)
+            .await
+            .map_err(|e| e.to_string())?;
+    } else {
+        // Fallback if we can't get HWND
+        auth_manager
+            .vault()
+            .auth()
+            .unlock_with_biometric(&message)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    
     Ok(CommandResponse::success(()))
 }
 
@@ -262,6 +285,7 @@ pub async fn unlock_with_biometric(
 #[tauri::command]
 pub async fn unlock_with_biometric(
     _message: String,
+    _window: tauri::Window,
     _auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<CommandResponse<()>, String> {
     Err("Biometric authentication is not supported on this platform".to_string())

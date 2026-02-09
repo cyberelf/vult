@@ -31,9 +31,12 @@
 //! }
 //! ```
 
+use windows::Foundation::IAsyncOperation;
 use windows::Security::Credentials::UI::{
     UserConsentVerificationResult, UserConsentVerifier, UserConsentVerifierAvailability,
 };
+use windows::Win32::Foundation::HWND;
+use windows::Win32::System::WinRT::IUserConsentVerifierInterop;
 
 use crate::core::{BiometricAvailability, BiometricProvider};
 use crate::error::{Result, VaultError};
@@ -43,12 +46,25 @@ use crate::error::{Result, VaultError};
 /// Uses Windows.Security.Credentials.UI.UserConsentVerifier API
 /// to perform biometric authentication on Windows 10/11.
 #[derive(Debug, Clone)]
-pub struct WindowsHelloProvider;
+pub struct WindowsHelloProvider {
+    /// Optional parent window handle for desktop app modal positioning
+    window_handle: Option<isize>,
+}
 
 impl WindowsHelloProvider {
-    /// Creates a new Windows Hello provider.
+    /// Creates a new Windows Hello provider without window handle (UWP mode).
     pub fn new() -> Self {
-        Self
+        Self {
+            window_handle: None,
+        }
+    }
+
+    /// Creates a new Windows Hello provider with parent window handle (Desktop mode).
+    /// This ensures the Windows Hello modal appears correctly on top of the parent window.
+    pub fn with_window_handle(hwnd: isize) -> Self {
+        Self {
+            window_handle: Some(hwnd),
+        }
     }
 }
 
@@ -77,31 +93,39 @@ impl BiometricProvider for WindowsHelloProvider {
         }
     }
 
-    /// Verifies the user using Windows Hello.
-    ///
-    /// Shows the Windows Hello prompt with the provided message.
-    /// Returns `Ok(true)` if verification succeeded, `Ok(false)` if
-    /// verification failed or was cancelled, or an error if a system
-    /// error occurred.
-    ///
-    /// # Arguments
-    ///
-    /// * `message` - User-facing message explaining why authentication is needed
     async fn verify(&self, message: &str) -> Result<bool> {
-        // Convert message to HSTRING for Windows API
         let message_hstring = windows::core::HSTRING::from(message);
 
-        // Request verification from Windows Hello
-        let async_op = UserConsentVerifier::RequestVerificationAsync(&message_hstring)
-            .map_err(|_| VaultError::BiometricFailed)?;
+        // If we have a window handle, use the desktop interop API
+        if let Some(hwnd_value) = self.window_handle {
+            let hwnd = HWND(hwnd_value as *mut _);
+            
+            // Get the IUserConsentVerifierInterop interface for desktop apps
+            let factory: IUserConsentVerifierInterop = windows::core::factory::<UserConsentVerifier, IUserConsentVerifierInterop>()
+                .map_err(|_| VaultError::BiometricFailed)?;
+            
+            // Call RequestVerificationForWindowAsync with HWND (desktop API)
+            let async_op: IAsyncOperation<UserConsentVerificationResult> = unsafe {
+                factory.RequestVerificationForWindowAsync(hwnd, &message_hstring)
+                    .map_err(|_| VaultError::BiometricFailed)?
+            };
+            
+            let result = async_op
+                .get()
+                .map_err(|_| VaultError::BiometricFailed)?;
+            
+            Ok(map_verification_result(result))
+        } else {
+            // No window handle - use standard UWP API
+            let async_op = UserConsentVerifier::RequestVerificationAsync(&message_hstring)
+                .map_err(|_| VaultError::BiometricFailed)?;
 
-        // Get the verification result (synchronously for now)
-        let result = async_op
-            .get()
-            .map_err(|_| VaultError::BiometricFailed)?;
+            let result = async_op
+                .get()
+                .map_err(|_| VaultError::BiometricFailed)?;
 
-        // Map the result to a boolean
-        Ok(map_verification_result(result))
+            Ok(map_verification_result(result))
+        }
     }
 }
 
@@ -132,7 +156,10 @@ mod tests {
     #[test]
     fn test_provider_creation() {
         let provider = WindowsHelloProvider::new();
-        assert!(std::mem::size_of_val(&provider) == 0); // Zero-sized type
+        assert!(provider.window_handle.is_none());
+        
+        let provider_with_hwnd = WindowsHelloProvider::with_window_handle(12345);
+        assert_eq!(provider_with_hwnd.window_handle, Some(12345));
     }
 
     #[test]

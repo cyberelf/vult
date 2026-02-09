@@ -5520,6 +5520,7 @@ dependencies = [
  "predicates",
  "proptest",
  "rand 0.8.5",
+ "raw-window-handle",
  "rpassword",
  "serde",
  "serde_json",
