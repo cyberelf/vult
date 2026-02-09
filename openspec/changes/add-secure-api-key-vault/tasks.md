@@ -15,7 +15,7 @@
 
 ## 3. Device Authentication
 - [x] 3.1 Implement PIN setup and validation
-- [ ] 3.2 Integrate platform biometric APIs (Windows Hello, Touch ID, Linux equivalent) - DEFERRED (future enhancement)
+- [ ] 3.2 Integrate platform biometric APIs (Windows Hello, Touch ID, Linux equivalent) - DEFERRED (tracked in add-platform-biometric-api)
 - [x] 3.3 Build authentication UI (PIN entry, biometric prompt)
 - [x] 3.4 Implement session management (lock after inactivity)
 - [x] 3.5 Add authentication flow tests
