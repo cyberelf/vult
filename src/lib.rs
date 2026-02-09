@@ -83,6 +83,14 @@ pub mod error;
 /// High-level service layer
 pub mod services;
 
+/// Biometric authentication (Windows Hello)
+///
+/// Platform-specific biometric authentication support.
+/// Available when `windows-biometric` feature is enabled.
+/// The mock provider is always available for testing.
+#[cfg(feature = "windows-biometric")]
+pub mod biometric;
+
 // =============================================================================
 // GUI-specific modules - Only available with gui feature
 // =============================================================================

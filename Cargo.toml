@@ -43,6 +43,7 @@ arboard = "3.4"
 hex = "0.4"
 dirs = "5.0.1"
 base64 = "0.22"
+async-trait = "0.1"
 
 # GUI dependencies (optional, for vult-gui binary)
 tauri = { version = "2.1", features = ["devtools"], optional = true }
@@ -57,13 +58,36 @@ comfy-table = { version = "7.1", optional = true }
 colored = { version = "2.1", optional = true }
 ctrlc = { version = "3.4", optional = true }
 
+# Windows biometric dependencies (optional, Windows-only)
+# Requires Windows 10 version 1903 (build 18362) or later for UserConsentVerifier API
+# Supported on Windows 10 (1903+) and Windows 11
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = ["Security_Credentials_UI"], optional = true }
+
 [features]
 default = ["gui", "cli"]
-gui = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-build", "custom-protocol"]
+
+# GUI feature - enables Tauri desktop application
+# Includes web-based frontend with Tauri IPC commands
+# On Windows, automatically enables Windows Hello biometric support
+gui = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-build", "custom-protocol", "windows-biometric"]
+
+# CLI feature - enables command-line interface
+# Provides interactive terminal-based vault management
 cli = ["dep:clap", "dep:clap_complete", "dep:dialoguer", "dep:rpassword", "dep:comfy-table", "dep:colored", "dep:ctrlc"]
+
+# Tauri custom protocol for production builds
 custom-protocol = ["tauri/custom-protocol"]
 
-# Development features
+# Windows Hello biometric authentication
+# Platform: Windows 10 (version 1903+) and Windows 11
+# Requires: Compatible biometric hardware (fingerprint, face, iris)
+# Behavior: Optional - PIN authentication always available as fallback
+# Privacy: Biometric data never leaves Windows security subsystem
+# Usage: cargo build --features windows-biometric
+windows-biometric = ["dep:windows"]
+
+# Development feature - enables both GUI and CLI for development
 dev = ["gui", "cli"]
 
 [dev-dependencies]

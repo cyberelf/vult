@@ -4,7 +4,7 @@
  */
 
 import { writable, derived } from 'svelte/store';
-import type { ApiKey, ScreenState } from '$lib/types';
+import type { ApiKey, ScreenState, BiometricAvailability } from '$lib/types';
 import * as tauri from '$lib/services/tauri';
 
 /**
@@ -23,6 +23,28 @@ export interface VaultState {
   loading: boolean;
   /** Error message if any */
   error: string | null;
+  /** Biometric availability status */
+  biometricAvailability: BiometricAvailability | null;
+  /** Whether biometric unlock is enabled in settings */
+  biometricEnabled: boolean;
+}
+
+/**
+ * Load biometric setting from localStorage
+ */
+function loadBiometricEnabled(): boolean {
+  if (typeof window === 'undefined') return true;
+  const stored = localStorage.getItem('vult_biometric_enabled');
+  return stored === null ? true : stored === 'true'; // Default enabled
+}
+
+/**
+ * Save biometric setting to localStorage
+ */
+function saveBiometricEnabled(enabled: boolean): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('vult_biometric_enabled', String(enabled));
+  }
 }
 
 /**
@@ -35,6 +57,8 @@ const initialState: VaultState = {
   searchQuery: '',
   loading: false,
   error: null,
+  biometricAvailability: null,
+  biometricEnabled: loadBiometricEnabled(),
 };
 
 /**
@@ -53,10 +77,19 @@ function createVaultStore() {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
         const isInit = await tauri.isInitialized();
+        // Check biometric availability if on Windows
+        let biometricAvailability: BiometricAvailability | null = null;
+        try {
+          biometricAvailability = await tauri.checkBiometricAvailable();
+        } catch {
+          // If check fails, assume not supported
+          biometricAvailability = 'not_supported';
+        }
         update((s) => ({
           ...s,
           screen: isInit ? 'unlock' : 'setup',
           loading: false,
+          biometricAvailability,
         }));
       } catch (error) {
         update((s) => ({
@@ -85,14 +118,15 @@ function createVaultStore() {
         await tauri.initVault({ pin });
         // After setup, unlock automatically
         const keys = await tauri.listApiKeys();
-        set({
+        update((s) => ({
+          ...s,
           screen: 'vault',
           isUnlocked: true,
           keys,
           searchQuery: '',
           loading: false,
           error: null,
-        });
+        }));
       } catch (error) {
         update((s) => ({
           ...s,
@@ -110,14 +144,15 @@ function createVaultStore() {
       try {
         await tauri.unlockVault({ pin });
         const keys = await tauri.listApiKeys();
-        set({
+        update((s) => ({
+          ...s,
           screen: 'vault',
           isUnlocked: true,
           keys,
           searchQuery: '',
           loading: false,
           error: null,
-        });
+        }));
       } catch (error) {
         update((s) => ({
           ...s,
@@ -128,20 +163,50 @@ function createVaultStore() {
     },
 
     /**
+     * Unlock vault with biometric authentication (Windows Hello)
+     */
+    unlockWithBiometric: async () => {
+      update((s) => ({ ...s, loading: true, error: null }));
+      try {
+        await tauri.unlockWithBiometric({ message: 'Unlock Vult API Vault' });
+        const keys = await tauri.listApiKeys();
+        update((s) => ({
+          ...s,
+          screen: 'vault',
+          isUnlocked: true,
+          keys,
+          searchQuery: '',
+          loading: false,
+          error: null,
+        }));
+      } catch (error) {
+        // On biometric failure, show error but keep unlock screen visible
+        // User can then try PIN as fallback
+        update((s) => ({
+          ...s,
+          loading: false,
+          error: error instanceof Error ? error.message : 'Biometric unlock failed',
+        }));
+        throw error; // Let caller handle fallback
+      }
+    },
+
+    /**
      * Lock vault and clear sensitive data
      */
     lock: async () => {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
         await tauri.lockVault();
-        set({
+        update((s) => ({
+          ...s,
           screen: 'unlock',
           isUnlocked: false,
           keys: [],
           searchQuery: '',
           loading: false,
           error: null,
-        });
+        }));
       } catch (error) {
         update((s) => ({
           ...s,
@@ -163,6 +228,28 @@ function createVaultStore() {
      */
     clearError: () => {
       update((s) => ({ ...s, error: null }));
+    },
+
+    /**
+     * Toggle biometric unlock setting
+     */
+    toggleBiometric: (enabled: boolean) => {
+      saveBiometricEnabled(enabled);
+      update((s) => ({ ...s, biometricEnabled: enabled }));
+    },
+
+    /**
+     * Check biometric availability (can be called to refresh status)
+     */
+    checkBiometric: async () => {
+      try {
+        const availability = await tauri.checkBiometricAvailable();
+        update((s) => ({ ...s, biometricAvailability: availability }));
+        return availability;
+      } catch {
+        update((s) => ({ ...s, biometricAvailability: 'not_supported' }));
+        return 'not_supported';
+      }
     },
 
     /**

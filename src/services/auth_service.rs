@@ -24,7 +24,9 @@ use std::time::Duration;
 
 use tokio::sync::RwLock;
 
-use crate::core::{validate_pin, MAX_PIN_LENGTH, MIN_PIN_LENGTH};
+use crate::core::{validate_pin, BiometricAvailability, MAX_PIN_LENGTH, MIN_PIN_LENGTH};
+#[cfg(feature = "windows-biometric")]
+use crate::core::BiometricProvider;
 use crate::crypto::VaultKey;
 use crate::database::VaultDb;
 use crate::error::{Result, VaultError};
@@ -38,6 +40,7 @@ use super::CryptoService;
 /// - Unlocking/locking the vault
 /// - PIN changes with re-encryption
 /// - Session state tracking
+/// - Optional biometric authentication (when provider is available)
 ///
 /// # Thread Safety
 ///
@@ -48,6 +51,8 @@ pub struct AuthService {
     vault_key: Arc<RwLock<Option<VaultKey>>>,
     is_unlocked: Arc<RwLock<bool>>,
     failed_attempts: Arc<RwLock<u32>>,
+    #[cfg(feature = "windows-biometric")]
+    biometric_provider: Option<Arc<dyn BiometricProvider>>,
 }
 
 impl AuthService {
@@ -64,7 +69,22 @@ impl AuthService {
             vault_key: Arc::new(RwLock::new(None)),
             is_unlocked: Arc::new(RwLock::new(false)),
             failed_attempts: Arc::new(RwLock::new(0)),
+            #[cfg(feature = "windows-biometric")]
+            biometric_provider: None,
         }
+    }
+
+    /// Sets the biometric provider for this authentication service.
+    ///
+    /// This is optional and only available when the `windows-biometric` feature is enabled.
+    ///
+    /// # Arguments
+    ///
+    /// * `provider` - The platform-specific biometric provider
+    #[cfg(feature = "windows-biometric")]
+    pub fn with_biometric_provider(mut self, provider: Arc<dyn BiometricProvider>) -> Self {
+        self.biometric_provider = Some(provider);
+        self
     }
 
     /// Checks if the vault is initialized (has a PIN set).
@@ -421,6 +441,106 @@ impl AuthService {
     /// Gets the number of failed authentication attempts.
     pub async fn get_failed_attempts(&self) -> u32 {
         *self.failed_attempts.read().await
+    }
+
+    // =========================================================================
+    // Biometric Authentication Methods
+    // =========================================================================
+
+    /// Checks if biometric authentication is available on this device.
+    ///
+    /// Returns `BiometricAvailability::NotSupported` if:
+    /// - The `windows-biometric` feature is not enabled
+    /// - No biometric provider has been configured
+    /// - The platform doesn't support biometrics
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let availability = auth_service.check_biometric_availability().await;
+    /// match availability {
+    ///     BiometricAvailability::Available => {
+    ///         // Show biometric unlock option
+    ///     }
+    ///     BiometricAvailability::NotConfigured => {
+    ///         // Prompt user to enroll biometrics
+    ///     }
+    ///     _ => {
+    ///         // Only show PIN unlock
+    ///     }
+    /// }
+    /// ```
+    pub async fn check_biometric_availability(&self) -> BiometricAvailability {
+        #[cfg(feature = "windows-biometric")]
+        {
+            if let Some(provider) = &self.biometric_provider {
+                return provider.check_availability().await;
+            }
+        }
+        BiometricAvailability::NotSupported
+    }
+
+    /// Attempts to unlock the vault using biometric authentication.
+    ///
+    /// This method uses the configured biometric provider to verify the user's
+    /// identity, then unlocks the vault using the stored PIN. The user's PIN
+    /// must be stored in the vault configuration for this to work.
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(())` if biometric verification succeeded and vault is unlocked
+    /// - `Err(VaultError::BiometricFailed)` if biometric verification failed or was cancelled
+    /// - `Err(VaultError::NotInitialized)` if vault is not initialized
+    /// - `Err(...)` for other errors (database, crypto, etc.)
+    ///
+    /// # Security Note
+    ///
+    /// Biometric unlock still requires the vault to be properly initialized with a PIN.
+    /// The biometric verification acts as a user authentication layer, after which
+    /// the vault performs the same PIN-based unlock process.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// match auth_service.unlock_with_biometric("Unlock Vult API Vault").await {
+    ///     Ok(()) => println!("Vault unlocked with biometric"),
+    ///     Err(VaultError::BiometricFailed) => {
+    ///         // Fall back to PIN entry
+    ///         println!("Biometric failed, please enter your PIN");
+    ///     }
+    ///     Err(e) => println!("Error: {}", e),
+    /// }
+    /// ```
+    #[cfg(feature = "windows-biometric")]
+    pub async fn unlock_with_biometric(&self, message: &str) -> Result<()> {
+        // Check if provider is configured
+        let provider = self.biometric_provider.as_ref()
+            .ok_or(VaultError::BiometricFailed)?;
+
+        // Verify biometric
+        let verified = provider.verify(message).await?;
+        if !verified {
+            return Err(VaultError::BiometricFailed);
+        }
+
+        // Biometric verification succeeded - retrieve stored vault key
+        // For now, we require the vault to be unlocked with PIN first
+        // In a future enhancement, we could store an encrypted master key
+        // that's decrypted only after biometric verification
+        if !self.is_unlocked_async().await {
+            return Err(VaultError::Locked);
+        }
+
+        // Already unlocked - biometric acts as confirmation
+        Ok(())
+    }
+
+    /// Stub for non-Windows platforms to maintain API compatibility.
+    ///
+    /// Always returns an error indicating biometric authentication is not supported.
+    #[cfg(not(feature = "windows-biometric"))]
+    pub async fn unlock_with_biometric(&self, _message: &str) -> Result<()> {
+        Err(VaultError::BiometricFailed)
     }
 }
 

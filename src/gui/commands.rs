@@ -7,6 +7,8 @@
 use super::auth_manager::AuthManager;
 use crate::clipboard::ClipboardManager;
 use crate::core::validate_pin;
+#[cfg(feature = "windows-biometric")]
+use crate::core::BiometricAvailability;
 use crate::database::{ApiKey, ApiKeyWithSecret, CreateApiKey, UpdateApiKey};
 use crate::services::key_service::UpdateKeyRequest;
 use serde::{Deserialize, Serialize};
@@ -127,6 +129,65 @@ pub async fn change_pin(
         .await
         .map_err(|e| e.to_string())?;
     Ok(CommandResponse::success(()))
+}
+
+// =============================================================================
+// Biometric Authentication Commands (Windows Hello)
+// =============================================================================
+
+/// Checks if biometric authentication is available on this device.
+///
+/// Returns the availability status of Windows Hello or other platform biometrics.
+#[cfg(feature = "windows-biometric")]
+#[tauri::command]
+pub async fn check_biometric_available(
+    auth_manager: tauri::State<'_, Arc<AuthManager>>,
+) -> Result<CommandResponse<BiometricAvailability>, String> {
+    let availability = auth_manager
+        .vault()
+        .auth()
+        .check_biometric_availability()
+        .await;
+    Ok(CommandResponse::success(availability))
+}
+
+/// Stub for non-Windows platforms.
+#[cfg(not(feature = "windows-biometric"))]
+#[tauri::command]
+pub async fn check_biometric_available(
+    _auth_manager: tauri::State<'_, Arc<AuthManager>>,
+) -> Result<CommandResponse<String>, String> {
+    Ok(CommandResponse::success("not_supported".to_string()))
+}
+
+/// Attempts to unlock the vault using biometric authentication (Windows Hello).
+///
+/// Shows the Windows Hello prompt and unlocks the vault if verification succeeds.
+/// Falls back to PIN entry if biometric verification fails or is cancelled.
+#[cfg(feature = "windows-biometric")]
+#[tauri::command]
+pub async fn unlock_with_biometric(
+    message: String,
+    auth_manager: tauri::State<'_, Arc<AuthManager>>,
+) -> Result<CommandResponse<()>, String> {
+    auth_manager
+        .vault()
+        .auth()
+        .unlock_with_biometric(&message)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(CommandResponse::success(()))
+}
+
+/// Stub for non-Windows platforms.
+#[cfg(not(feature = "windows-biometric"))]
+#[tauri::command]
+pub async fn unlock_with_biometric(
+    _message: String,
+    _auth_manager: tauri::State<'_, Arc<AuthManager>>,
+) -> Result<CommandResponse<()>, String> {
+    Err("Biometric authentication is not supported on this platform".to_string())
 }
 
 // =============================================================================

@@ -15,6 +15,8 @@ import type {
   ListApiKeysResult,
   IsInitializedResult,
   CommandResponse,
+  BiometricAvailability,
+  UnlockBiometricArgs,
 } from '$lib/types';
 
 /**
@@ -369,6 +371,55 @@ export async function updateActivity(): Promise<void> {
 }
 
 /**
+ * Checks if biometric authentication (Windows Hello) is available.
+ * Returns the availability status indicating why biometrics may be unavailable.
+ *
+ * @returns BiometricAvailability status
+ * @throws {Error} If availability check fails
+ *
+ * @example
+ * ```ts
+ * const availability = await checkBiometricAvailable();
+ * if (availability === 'available') {
+ *   // Show biometric unlock option
+ * }
+ * ```
+ */
+export async function checkBiometricAvailable(): Promise<BiometricAvailability> {
+  try {
+    const response = await invoke<CommandResponse<BiometricAvailability>>('check_biometric_available');
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to check biometric availability');
+    }
+    return response.data;
+  } catch (error) {
+    throw new Error(`Failed to check biometric availability: ${error}`);
+  }
+}
+
+/**
+ * Unlocks the vault using biometric authentication (Windows Hello).
+ * Shows the Windows Hello prompt with the provided message.
+ *
+ * @param args - Optional message to display in biometric prompt
+ * @throws {Error} If biometric unlock fails or is cancelled
+ *
+ * @example
+ * ```ts
+ * await unlockWithBiometric({ message: 'Unlock Vult API Vault' });
+ * ```
+ */
+export async function unlockWithBiometric(args?: UnlockBiometricArgs): Promise<void> {
+  try {
+    await invoke('unlock_with_biometric', {
+      message: args?.message || 'Unlock Vult API Vault',
+    });
+  } catch (error) {
+    throw new Error(`Failed to unlock with biometric: ${error}`);
+  }
+}
+
+/**
  * Checks if the Tauri API is available.
  * Useful for detecting if running in Tauri vs browser.
  *
@@ -447,6 +498,14 @@ export function createMockTauriApi() {
     },
     updateActivity: async () => {
       console.log('[MOCK] updateActivity');
+    },
+    checkBiometricAvailable: async (): Promise<BiometricAvailability> => {
+      console.log('[MOCK] checkBiometricAvailable');
+      return 'not_supported'; // Mock returns not supported for non-Windows
+    },
+    unlockWithBiometric: async (args?: UnlockBiometricArgs) => {
+      console.log('[MOCK] unlockWithBiometric', args);
+      await new Promise((resolve) => setTimeout(resolve, 500));
     },
   };
 }

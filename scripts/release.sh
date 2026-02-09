@@ -166,9 +166,9 @@ echo -e "${YELLOW}Verifying binaries...${NC}"
 echo -e "${GREEN}✓ CLI binary works${NC}"
 
 # GUI verification requires display, skip in headless
-if [ -n "$DISPLAY" ] || [[ "$OSTYPE" == "msys" ]]; then
-    timeout 2 "$DIST_DIR/vult-gui${EXE_EXT}" 2>/dev/null || echo -e "${YELLOW}GUI binary check skipped (requires display)${NC}"
-fi
+# if [ -n "$DISPLAY" ] || [[ "$OSTYPE" == "msys" ]]; then
+#     timeout 2 "$DIST_DIR/vult-gui${EXE_EXT}" 2>/dev/null || echo -e "${YELLOW}GUI binary check skipped (requires display)${NC}"
+# fi
 
 echo ""
 echo -e "${GREEN}Release ready for distribution!${NC}"

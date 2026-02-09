@@ -1,22 +1,3 @@
-<!-- OPENSPEC:START -->
-# OpenSpec Instructions
-
-These instructions are for AI assistants working in this project.
-
-Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
-- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
-- Sounds ambiguous and you need the authoritative spec before coding
-
-Use `@/openspec/AGENTS.md` to learn:
-- How to create and apply change proposals
-- Spec format and conventions
-- Project structure and guidelines
-
-Keep this managed block so 'openspec update' can refresh the instructions.
-
-<!-- OPENSPEC:END -->
-
 # Vult - AI Assistant Instructions
 
 Instructions for AI assistants working on the Vult project.
@@ -154,6 +135,79 @@ Use the OpenSpec workflow below:
 - ✅ Validate all inputs
 - ✅ Test encryption/decryption roundtrips
 
+## Windows Hello Integration
+
+Vult supports optional biometric authentication using Windows Hello on Windows 10 (1903+) and Windows 11.
+
+### Key Points
+- **Optional Feature**: Enabled via `windows-biometric` cargo feature flag
+- **PIN Fallback**: Windows Hello failure automatically falls back to PIN authentication
+- **User Control**: Users can enable/disable Windows Hello in settings
+- **Platform-Specific**: Windows-only via `windows-rs` crate
+- **No Data Storage**: Biometric templates never leave Windows Hello, Vult only receives yes/no verification
+
+### Architecture
+- **BiometricProvider Trait**: Platform-agnostic abstraction in `src/core/types.rs`  
+- **WindowsHelloProvider**: Windows implementation in `src/biometric/windows_hello.rs`
+- **MockBiometricProvider**: Test doubles in `src/biometric/mock.rs`
+- **AuthService Integration**: Biometric methods available when provider is set
+- **GUI Integration**: Settings toggle + unlock screen biometric button (SvelteKit)
+
+### Testing
+```bash
+# Run biometric unit tests (Windows Hello result mapping)
+cargo test --lib biometric
+
+# Run integration tests (requires windows-biometric feature)
+cargo test --features windows-biometric --test biometric_integration_test
+
+# Run biometric availability tests
+cargo test --test biometric_availability_test
+
+# Mock provider allows testing without real hardware
+```
+
+### Feature Configuration
+**IMPORTANT**: The `windows-biometric` feature is automatically enabled when building the GUI:
+
+```toml
+# In Cargo.toml
+[features]
+gui = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-build", "custom-protocol", "windows-biometric"]
+```
+
+This means:
+- `cargo tauri dev` - Windows Hello is enabled ✓
+- `cargo tauri build` - Windows Hello is enabled ✓
+- `cargo build --bin vult-gui` - Windows Hello is enabled ✓
+- `cargo build --bin vult` (CLI) - Windows Hello is NOT enabled (as expected)
+
+### Troubleshooting
+If Windows Hello shows "Not supported on this system":
+
+1. **Check feature flag is compiled in**:
+   ```bash
+   # Should show "[DEBUG] windows-biometric feature is ENABLED" in logs
+   cargo run --bin vult-gui
+   ```
+
+2. **Verify tests pass**:
+   ```bash
+   cargo test --test biometric_availability_test -- --nocapture
+   # Should show "Available" or "NotConfigured", never "NotSupported" if feature is enabled
+   ```
+
+3. **Common issues**:
+   - Feature not in default build → Fix: Already included in `gui` feature
+   - Provider not initialized → Fix: VaultManager.new() creates provider when feature enabled
+   - Frontend not unwrapping CommandResponse → Fix: checkBiometricAvailable() unwraps .data
+
+### Common Scenarios
+- **Biometric Available**: Show Windows Hello button on unlock screen
+- **Not Configured**: Show message prompting user to set up Windows Hello in Windows Settings
+- **Hardware Missing**: Fall back to PIN-only mode
+- **Verification Failed**: Keep unlock screen open, allow PIN entry
+
 ## Dependencies
 
 Key dependencies and their purposes:
@@ -165,6 +219,8 @@ Key dependencies and their purposes:
 - `arboard 3.4` - Clipboard management
 - `thiserror 2.0` - Error handling
 - `chrono 0.4` - Timestamps
+- `windows 0.58` - Windows Hello API bindings (feature: `windows-biometric`)
+- `async-trait 0.1` - Async trait support for BiometricProvider trait objects
 
 ## Debugging
 

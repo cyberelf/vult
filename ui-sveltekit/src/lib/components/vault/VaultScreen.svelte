@@ -1,7 +1,7 @@
 <script lang="ts">
   import { vaultStore } from '$lib/stores/vault';
   import { Button } from '$lib/components/ui/shadcn/button';
-  import { Lock, Tag } from 'lucide-svelte';
+  import { Lock, Tag, Settings } from 'lucide-svelte';
   import SearchBar from './SearchBar.svelte';
   import KeyTable from './KeyTable.svelte';
   import EmptyState from './EmptyState.svelte';
@@ -11,9 +11,12 @@
   import KeyModal from '$lib/components/modals/KeyModal.svelte';
   import ViewKeyModal from '$lib/components/modals/ViewKeyModal.svelte';
   import DeleteModal from '$lib/components/modals/DeleteModal.svelte';
+  import SettingsModal from '$lib/components/modals/SettingsModal.svelte';
   import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 
   const VERSION = '0.2.0';
+
+  let settingsOpen = $state(false);
 </script>
 
 <div class="vault-container container max-w-[1200px] mx-auto px-4 py-8 space-y-6">
@@ -31,6 +34,13 @@
     </div>
     <div class="flex gap-3 items-center">
       <ThemeToggle />
+      <Button
+        variant="secondary"
+        onclick={() => settingsOpen = true}
+      >
+        <Settings class="w-4 h-4 mr-2" />
+        Settings
+      </Button>
       <Button
         variant="primary"
         onclick={() => uiStore.openModal('key', null)}
@@ -62,3 +72,4 @@
 <KeyModal open={$isKeyModalOpen} mode={$uiStore.keyModalMode} keyData={$uiStore.activeKeyId ? $filteredKeys.find(k => k.id === $uiStore.activeKeyId) : undefined} />
 <ViewKeyModal open={$isViewKeyModalOpen} keyData={$filteredKeys.find(k => k.id === $uiStore.activeKeyId)!} />
 <DeleteModal open={$isDeleteModalOpen} keyData={$filteredKeys.find(k => k.id === $uiStore.activeKeyId)!} />
+<SettingsModal bind:open={settingsOpen} onClose={() => settingsOpen = false} />

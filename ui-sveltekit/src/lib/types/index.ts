@@ -20,4 +20,6 @@ export type {
   ScreenState,
   LoadingState,
   ModalState,
+  BiometricAvailability,
+  UnlockBiometricArgs,
 } from './api.js';

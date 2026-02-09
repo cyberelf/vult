@@ -76,6 +76,8 @@ async fn main() {
             commands::get_auth_state,
             commands::is_initialized,
             commands::change_pin,
+            commands::check_biometric_available,
+            commands::unlock_with_biometric,
             commands::create_api_key,
             commands::get_api_key,
             commands::list_api_keys,

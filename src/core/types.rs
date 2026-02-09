@@ -24,6 +24,77 @@ pub const DEFAULT_AUTO_LOCK_DURATION: Duration = Duration::from_secs(300);
 pub const CLIPBOARD_CLEAR_TIMEOUT: Duration = Duration::from_secs(45);
 
 // =============================================================================
+// Biometric Authentication Types
+// =============================================================================
+
+/// Availability status of biometric authentication.
+///
+/// Platform-agnostic representation of biometric sensor availability
+/// and configuration status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "gui", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "gui", serde(rename_all = "snake_case"))]
+pub enum BiometricAvailability {
+    /// Biometric authentication is available and ready to use
+    Available,
+
+    /// Biometric hardware present but not configured (e.g., no fingerprint enrolled)
+    NotConfigured,
+
+    /// No biometric hardware detected on this device
+    DeviceNotPresent,
+
+    /// Biometric authentication is not supported on this platform
+    NotSupported,
+}
+
+/// Trait for platform-specific biometric authentication providers.
+///
+/// This trait abstracts biometric authentication, allowing platform-specific
+/// implementations (e.g., Windows Hello) while keeping the library framework-agnostic.
+///
+/// # Example Implementation
+///
+/// ```rust,ignore
+/// struct WindowsHelloProvider;
+///
+/// #[async_trait]
+/// impl BiometricProvider for WindowsHelloProvider {
+///     async fn check_availability(&self) -> BiometricAvailability {
+///         // Query Windows Hello API
+///         BiometricAvailability::Available
+///     }
+///
+///     async fn verify(&self, message: &str) -> crate::error::Result<bool> {
+///         // Show Windows Hello prompt
+///         Ok(true)
+///     }
+/// }
+/// ```
+#[cfg_attr(not(feature = "windows-biometric"), allow(unused))]
+#[async_trait::async_trait]
+pub trait BiometricProvider: Send + Sync {
+    /// Checks if biometric authentication is available on this device.
+    ///
+    /// This method queries the platform-specific biometric capabilities
+    /// and returns the availability status.
+    async fn check_availability(&self) -> BiometricAvailability;
+
+    /// Attempts to verify the user using biometric authentication.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - A user-facing message explaining why authentication is needed
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(true)` if biometric verification succeeded
+    /// - `Ok(false)` if verification failed or was cancelled by user
+    /// - `Err(...)` if a system error occurred
+    async fn verify(&self, message: &str) -> crate::error::Result<bool>;
+}
+
+// =============================================================================
 // PIN Validation
 // =============================================================================
 

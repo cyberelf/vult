@@ -17,6 +17,7 @@ A cross-platform desktop application for securely storing and managing API keys 
 
 - 🔐 **Secure Storage**: AES-256-GCM encryption with Argon2id key derivation
 - 🔑 **Per-Key Encryption**: Each API key encrypted with unique derived key
+- 🔓 **Windows Hello**: Optional biometric unlock on Windows 10/11 (feature-gated)
 - ⏱️ **Auto-Lock**: Automatically locks after 5 minutes of inactivity
 - 📋 **Clipboard Integration**: Copy keys with auto-clear after 45 seconds
 - 🔍 **Search**: Quickly find keys by app name, key name, or description
@@ -73,6 +74,14 @@ Vult features a fully responsive, autoscaling UI that adapts to any window size.
 - **Backup Protection**: Creates backups before migrations
 - **Version Guard**: Blocks opening databases with newer schema versions
 
+### Windows Hello (Optional)
+- **Platform**: Windows 10 (version 1903+) or Windows 11
+- **Requirements**: Compatible biometric device (fingerprint, face, iris)
+- **Feature Flag**: Build with `--features windows-biometric` to enable
+- **Privacy**: Biometric data never leaves Windows security subsystem
+- **Fallback**: PIN authentication always available as backup
+- **User Control**: Can be enabled/disabled in settings
+
 ## Installation
 
 ### Prerequisites
@@ -98,6 +107,9 @@ cargo tauri dev
 
 # Build for release
 cargo tauri build
+
+# Build with Windows Hello support (Windows only)
+cargo tauri build --features windows-biometric
 ```
 
 ## Usage

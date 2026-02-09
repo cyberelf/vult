@@ -91,6 +91,10 @@ pub enum VaultError {
     #[error("Vault is locked. Unlock with your PIN first.")]
     Locked,
 
+    /// Biometric authentication failed or was cancelled
+    #[error("Biometric authentication failed. Please use your PIN instead.")]
+    BiometricFailed,
+
     // =========================================================================
     // Cryptographic Errors
     // =========================================================================
@@ -273,7 +277,8 @@ impl VaultError {
             | VaultError::PinTooShort
             | VaultError::PinTooLong
             | VaultError::TooManyAttempts
-            | VaultError::Locked => 1,
+            | VaultError::Locked
+            | VaultError::BiometricFailed => 1,
 
             // Not found
             VaultError::NotFound(_) => 2,

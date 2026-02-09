@@ -176,3 +176,22 @@ export type LoadingState = 'idle' | 'loading' | 'success' | 'error';
  * UI modal states.
  */
 export type ModalState = 'key' | 'view' | 'delete' | null;
+
+/**
+ * Biometric availability states.
+ * Matches the Rust BiometricAvailability enum from src/core/types.rs
+ */
+export type BiometricAvailability =
+  | 'available'
+  | 'not_configured'
+  | 'device_not_present'
+  | 'not_supported';
+
+/**
+ * Arguments for unlocking with biometric authentication.
+ * Used with unlock_with_biometric Tauri command.
+ */
+export interface UnlockBiometricArgs {
+  /** Optional message to display in the biometric prompt */
+  message?: string;
+}
