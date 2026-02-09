@@ -27,6 +27,10 @@ export interface VaultState {
   biometricAvailability: BiometricAvailability | null;
   /** Whether biometric unlock is enabled in settings */
   biometricEnabled: boolean;
+  /** Whether PIN is actually stored for biometric unlock */
+  biometricStorageEnabled: boolean;
+  /** Temporarily store PIN for biometric enablement */
+  lastUsedPin: string | null;
 }
 
 /**
@@ -59,6 +63,8 @@ const initialState: VaultState = {
   error: null,
   biometricAvailability: null,
   biometricEnabled: loadBiometricEnabled(),
+  biometricStorageEnabled: false,
+  lastUsedPin: null,
 };
 
 /**
@@ -79,8 +85,11 @@ function createVaultStore() {
         const isInit = await tauri.isInitialized();
         // Check biometric availability if on Windows
         let biometricAvailability: BiometricAvailability | null = null;
+        let biometricStorageEnabled = false;
         try {
           biometricAvailability = await tauri.checkBiometricAvailable();
+          // Also check if PIN is stored for biometric unlock
+          biometricStorageEnabled = await tauri.isBiometricStorageEnabled();
         } catch {
           // If check fails, assume not supported
           biometricAvailability = 'not_supported';
@@ -90,6 +99,7 @@ function createVaultStore() {
           screen: isInit ? 'unlock' : 'setup',
           loading: false,
           biometricAvailability,
+          biometricStorageEnabled,
         }));
       } catch (error) {
         update((s) => ({
@@ -144,15 +154,34 @@ function createVaultStore() {
       try {
         await tauri.unlockVault({ pin });
         const keys = await tauri.listApiKeys();
-        update((s) => ({
-          ...s,
-          screen: 'vault',
-          isUnlocked: true,
-          keys,
-          searchQuery: '',
-          loading: false,
-          error: null,
-        }));
+        
+        // Automatically store PIN for biometric unlock if enabled
+        let shouldStoreBiometric = false;
+        let currentState: VaultState | null = null;
+        update((s) => {
+          currentState = s;
+          return {
+            ...s,
+            screen: 'vault',
+            isUnlocked: true,
+            keys,
+            searchQuery: '',
+            loading: false,
+            error: null,
+            lastUsedPin: pin, // Store temporarily for manual enablement in settings
+          };
+        });
+        
+        // If biometric is available and enabled, automatically store PIN
+        if (currentState?.biometricAvailability === 'available' && 
+            currentState?.biometricEnabled) {
+          try {
+            await tauri.enableBiometricStorage(pin);
+            update((s) => ({ ...s, biometricStorageEnabled: true }));
+          } catch (err) {
+            console.error('Auto-enable biometric storage failed:', err);
+          }
+        }
       } catch (error) {
         update((s) => ({
           ...s,
@@ -206,6 +235,7 @@ function createVaultStore() {
           searchQuery: '',
           loading: false,
           error: null,
+          lastUsedPin: null, // Clear temporarily stored PIN
         }));
       } catch (error) {
         update((s) => ({
@@ -232,10 +262,38 @@ function createVaultStore() {
 
     /**
      * Toggle biometric unlock setting
+     * If enabling and PIN is available, stores it securely
      */
-    toggleBiometric: (enabled: boolean) => {
+    toggleBiometric: async (enabled: boolean) => {
       saveBiometricEnabled(enabled);
-      update((s) => ({ ...s, biometricEnabled: enabled }));
+      
+      // Get current state to access lastUsedPin
+      let storageEnabled = false;
+      let currentPin: string | null = null;
+      
+      update((s) => {
+        currentPin = s.lastUsedPin;
+        return { ...s, biometricEnabled: enabled };
+      });
+      
+      if (enabled && currentPin) {
+        // Enable biometric storage using the temporarily stored PIN
+        try {
+          await tauri.enableBiometricStorage(currentPin);
+          storageEnabled = true;
+        } catch (err) {
+          console.error('Failed to enable biometric storage:', err);
+        }
+      } else if (!enabled) {
+        // Disable biometric storage
+        try {
+          await tauri.disableBiometricStorage();
+        } catch (err) {
+          console.error('Failed to disable biometric storage:', err);
+        }
+      }
+      
+      update((s) => ({ ...s, biometricStorageEnabled: storageEnabled }));
     },
 
     /**

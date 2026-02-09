@@ -7,20 +7,26 @@
 
   let pin = $state('');
   let processing = $state(false);
-  let showPinInput = $state(true);
+  let showPinInput = $state(false); // Start with Windows Hello if available
 
-  // Check if biometric unlock is available and enabled
+  // Determine if Windows Hello should be shown as default
+  const biometricAvailable = $derived(
+    $vaultStore.biometricAvailability === 'available' && 
+    $vaultStore.biometricEnabled
+  );
+  
+  const biometricReady = $derived(
+    biometricAvailable && $vaultStore.biometricStorageEnabled
+  );
+  
+  // Show Windows Hello by default if ready, otherwise show PIN
   $effect(() => {
-    const state = $vaultStore;
-    // Show PIN by default if biometrics not available or not enabled
-    if (!state.biometricAvailability || state.biometricAvailability !== 'available' || !state.biometricEnabled) {
+    if (!biometricAvailable || !$vaultStore.biometricStorageEnabled) {
       showPinInput = true;
+    } else {
+      showPinInput = false;
     }
   });
-
-  const biometricAvailable = $derived(
-    $vaultStore.biometricAvailability === 'available' && $vaultStore.biometricEnabled
-  );
 
   async function handleSubmit(event: Event) {
     event.preventDefault();
@@ -31,15 +37,16 @@
   }
 
   async function handleBiometricUnlock() {
-    if (processing) return;
+    if (processing) return; // Prevent double-click
     processing = true;
     try {
       await vaultStore.unlockWithBiometric();
     } catch (err) {
       // Biometric failed - show PIN input for fallback
       showPinInput = true;
+    } finally {
+      processing = false; // Always reset processing state
     }
-    processing = false;
   }
 
   function showPinFallback() {
@@ -53,8 +60,10 @@
       <h1 class="text-4xl font-bold mb-2">Vult</h1>
       <p class="text-muted-foreground">Secure API Key Vault</p>
       <p class="text-sm text-muted-foreground mt-4">
-        {#if biometricAvailable && !showPinInput}
-          Use Windows Hello to unlock the vault
+        {#if biometricReady && !showPinInput}
+          Click below to unlock with Windows Hello
+        {:else if biometricAvailable && !$vaultStore.biometricStorageEnabled}
+          Unlock with PIN first to enable Windows Hello
         {:else}
           Enter your PIN to unlock the vault
         {/if}
@@ -67,24 +76,24 @@
       </div>
     {/if}
 
-    {#if biometricAvailable && !showPinInput}
-      <!-- Biometric unlock option -->
+    {#if biometricReady && !showPinInput}
+      <!-- Windows Hello unlock (default when available) -->
       <div class="space-y-4">
         <Button
           onclick={handleBiometricUnlock}
           variant="primary"
-          class="w-full"
+          class="w-full py-8 border-2 border-primary/20 flex items-center justify-center"
           disabled={processing || $isLoading}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 mr-2"
+            class="h-6 w-6 mr-2"
             viewBox="0 0 20 20"
             fill="currentColor"
           >
             <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
           </svg>
-          {processing || $isLoading ? 'Unlocking...' : 'Unlock with Windows Hello'}
+          <span>{processing || $isLoading ? 'Unlocking...' : 'Unlock with Windows Hello'}</span>
         </Button>
 
         <div class="text-center">
@@ -123,7 +132,7 @@
           {processing || $isLoading ? 'Unlocking...' : 'Unlock'}
         </Button>
 
-        {#if biometricAvailable}
+        {#if biometricReady}
           <div class="text-center">
             <button
               onclick={() => showPinInput = false}

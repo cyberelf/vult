@@ -105,3 +105,255 @@ if let Ok(max) = i64::try_from(u64::MAX) {
 **Tests Added**: List of new tests
 
 ---
+
+## 2026-02-09: Backend-Frontend API Inconsistency - Windows Hello Integration
+
+### The Bug
+Windows Hello biometric feature showed "Checking availability..." indefinitely instead of displaying actual status. Multiple debugging rounds were needed due to cascading type mismatches between Rust backend and TypeScript frontend.
+
+**Location**: Multiple files across backend and frontend
+
+### Issues Discovered (in order)
+
+#### Issue #1: Missing `CommandResponse` Unwrapping
+**Problem**: Frontend called `checkBiometricAvailable()` expecting raw `BiometricAvailability` but backend returned `CommandResponse<BiometricAvailability>`.
+
+**Fix**: Updated `ui-sveltekit/src/lib/services/tauri.ts`:
+```typescript
+// Before
+return await invoke<BiometricAvailability>('check_biometric_available');
+
+// After
+const response = await invoke<CommandResponse<BiometricAvailability>>('check_biometric_available');
+if (!response.success || !response.data) {
+  throw new Error(response.error || 'Failed to check biometric availability');
+}
+return response.data;
+```
+
+#### Issue #2: Enum Serialization Format Mismatch
+**Problem**: Rust enum serialized as PascalCase (`"Available"`, `"NotConfigured"`) but TypeScript expected snake_case (`'available'`, `'not_configured'`).
+
+**Root Cause**: 
+- Serde default serialization is PascalCase for enums
+- Frontend switch statement used snake_case literals
+- Mismatched values caused `default` case → "Checking availability..."
+
+**Fix**: Added serde attribute in `src/core/types.rs`:
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "gui", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "gui", serde(rename_all = "snake_case"))]
+pub enum BiometricAvailability {
+    Available,
+    NotConfigured,
+    DeviceNotPresent,
+    NotSupported,
+}
+```
+
+#### Issue #3: Feature Flag Not Enabled
+**Problem**: `windows-biometric` feature wasn't included in default `gui` feature, so it wasn't enabled during `cargo tauri dev`.
+
+**Fix**: Updated `Cargo.toml`:
+```toml
+gui = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-build", "custom-protocol", "windows-biometric"]
+```
+
+### Root Cause Analysis
+
+1. **No Type Safety Across IPC Boundary**: TypeScript types are manually maintained copies of Rust types
+2. **Silent Failures**: Type mismatches don't cause compilation errors, just runtime behavior bugs
+3. **Missing Verification**: No systematic way to verify Rust and TypeScript types match
+4. **Inconsistent Patterns**: Some commands use `CommandResponse`, some return raw data
+5. **Default Serde Behavior**: Serde's default enum serialization doesn't match typical TypeScript conventions
+
+### Lessons Learned
+
+1. **Always use `CommandResponse<T>` wrapper**: Provides consistent error handling across all Tauri commands
+2. **Always add `#[serde(rename_all = "snake_case")]` to shared enums**: Matches TypeScript naming conventions
+3. **Keep TypeScript types synchronized**: Update `ui-sveltekit/src/lib/types/api.ts` immediately after Rust changes
+4. **Test at the API boundary**: Run `npm run build` after backend changes to catch type errors early
+5. **Document the pattern in AGENTS.md**: Added comprehensive section on Backend-Frontend API Consistency
+6. **Feature flags need careful management**: GUI-required features should be part of the `gui` feature
+
+### Prevention Strategies
+
+1. ✅ Added "Backend-Frontend API Consistency" section to AGENTS.md with mandatory rules
+2. ✅ Added verification checklist for new Tauri commands
+3. ✅ Created unit tests: `tests/biometric_availability_test.rs` to verify feature flag behavior
+4. ⏳ TODO: Consider using `ts-rs` crate to auto-generate TypeScript types from Rust
+5. ⏳ TODO: Add CI check that compares TypeScript types against Rust types
+6. ⏳ TODO: Create a script to validate all `CommandResponse` usage across codebase
+
+### Tests Added
+- `tests/biometric_availability_test.rs`: 4 tests verifying provider initialization and feature flag behavior
+
+### Impact
+- **Debugging Time**: Multiple hours across several debugging rounds
+- **User Impact**: Feature appeared completely broken ("Checking availability..." forever)
+- **Code Quality**: Exposed systemic type safety gap in the project
+- **Documentation**: Led to major improvements in AGENTS.md conventions
+
+---
+
+## 2026-02-09: Missing Credential Store in Biometric Authentication Design
+
+### The Problem
+The Windows Hello biometric authentication feature was implemented without a credential storage component, resulting in a fundamentally broken authentication flow.
+
+**Location**: `src/services/auth_service.rs`, `unlock_with_biometric()` method
+
+**Original Problematic Implementation**:
+```rust
+pub async fn unlock_with_biometric(&self, message: &str) -> Result<()> {
+    // Verify vault is unlocked (this ensures user was recently authenticated)
+    if !self.is_unlocked_async().await {
+        return Err(VaultError::Locked);
+    }
+    
+    let provider = self.biometric_provider.as_ref().ok_or(...)?;
+    provider.verify(message).await?;
+    
+    Ok(())
+}
+```
+
+**The Issue**:
+- Biometric unlock required the vault to already be UNLOCKED before using biometric
+- Only verified biometric identity, but didn't actually unlock anything
+- Complete logical inversion: biometric was for verification after unlock, not for unlocking
+- Missing the entire credential retrieval mechanism
+
+### Root Cause Analysis
+
+1. **Incomplete Architecture Pattern**: The biometric authentication pattern has three required components:
+   - ✅ Identity verification (Windows Hello API call)
+   - ❌ Credential storage (MISSING - no place to store PIN)
+   - ❌ Credential retrieval (MISSING - no way to get PIN after verification)
+
+2. **Misunderstanding the Use Case**: Confused "biometric verification of already-authenticated user" with "biometric unlocking"
+   - **Verification pattern**: User → PIN unlock → Later verify still same user with biometric
+   - **Unlock pattern**: User → Biometric → Retrieve stored PIN → Unlock vault
+
+3. **Missing Design Review**: Should have recognized that biometric unlock REQUIRES credential storage:
+   - Where is the PIN stored between sessions?
+   - How is it encrypted at rest?
+   - How is it retrieved after biometric verification?
+   - These questions should have been asked during initial implementation
+
+### The Fix
+
+Created complete biometric unlock architecture:
+
+1. **Added `CredentialStore` module** (`src/biometric/credential_store.rs`):
+   - Uses Windows DPAPI (Data Protection API) for encryption
+   - Stores PIN encrypted with user's Windows credentials
+   - Per-vault storage using database path hash
+   - Only accessible to the Windows user who stored it
+
+2. **Refactored `unlock_with_biometric()`**:
+```rust
+pub async fn unlock_with_biometric(&self, message: &str) -> Result<()> {
+    // 1. Verify biometric identity
+    let provider = self.biometric_provider.as_ref().ok_or(...)?;
+    let verified = provider.verify(message).await?;
+    if !verified { return Err(VaultError::BiometricFailed); }
+    
+    // 2. Retrieve stored PIN (only after successful biometric)
+    let credential_store = self.credential_store.as_ref().ok_or(...)?;
+    let pin = credential_store.retrieve_pin()?;
+    
+    // 3. Unlock vault with retrieved PIN
+    self.unlock(&pin).await?;
+    
+    Ok(())
+}
+```
+
+3. **Added credential management**:
+   - `enable_biometric_storage(pin)` - Stores PIN after unlock
+   - `disable_biometric_storage()` - Removes stored PIN
+   - `is_biometric_storage_enabled()` - Checks if PIN is stored
+   - Automatic PIN storage after successful unlock (if biometric enabled)
+
+### Lessons Learned
+
+1. **Recognize Complete Architecture Patterns**: Biometric authentication is not just verification - it's a complete pattern:
+   - Identity verification (biometric)
+   - Credential storage (encrypted at rest)
+   - Credential retrieval (after verification)
+   - Authentication (using retrieved credential)
+   
+   Missing ANY component makes the feature unusable.
+
+2. **Question the Flow**: Ask "How does this actually work end-to-end?"
+   - User locks vault → reboot → unlock with biometric
+   - Where does the PIN come from if vault is locked?
+   - If it's stored, where? If it's not stored, how does biometric help?
+   
+3. **Platform Patterns Have Standard Solutions**: 
+   - Windows biometric → Windows DPAPI for credential storage
+   - macOS biometric → macOS Keychain for credential storage
+   - Linux biometric → PAM/polkit patterns
+   
+   These are well-established patterns that should be researched and followed.
+
+4. **Security-Critical Features Need Complete Design**: 
+   - Authentication mechanisms can't be incrementally implemented
+   - Must design complete flow before coding: enrollment → storage → retrieval → usage
+   - Each component must be secure individually and in combination
+
+5. **Test the User Flow**: Walk through the actual user experience:
+   - Setup vault → Enable biometric → Lock → Unlock with biometric
+   - If this flow doesn't work without additional steps, the feature is broken
+
+### Prevention Strategies
+
+1. ✅ Document biometric authentication pattern in AGENTS.md
+2. ✅ Add comprehensive integration tests for complete biometric flow
+3. ✅ Created per-vault credential storage to support multiple vaults
+4. ⏳ TODO: Create architecture decision records (ADRs) for authentication patterns
+5. ⏳ TODO: Add security design review checklist for authentication features
+6. ⏳ TODO: Document all platform-specific credential storage patterns
+
+### Action Items for Future Features
+
+When implementing authentication or security features:
+
+1. **Architecture First**: Design complete flow before writing code
+   - Draw sequence diagrams
+   - Identify all required components
+   - Document data storage requirements
+   - Plan error handling and edge cases
+
+2. **Research Platform Patterns**: Don't invent authentication patterns
+   - How do native apps do this on this platform?
+   - What are the OS-provided secure storage mechanisms?
+   - What are the standard libraries/crates for this?
+
+3. **Security Review**: Authentication features need:
+   - Threat model
+   - Storage encryption strategy
+   - Key management plan
+   - Attack surface analysis
+
+4. **Complete Testing**: Test the full user journey:
+   - Setup flow
+   - Normal operation
+   - Error cases
+   - Recovery scenarios
+   - Security properties
+
+### Tests Added
+- `tests/biometric_integration_test.rs`: 7 tests for complete biometric unlock flow
+- Unit tests for `CredentialStore`: PIN storage, retrieval, encryption roundtrip
+
+### Impact
+- **Development Time**: Feature was partially implemented, then required complete redesign
+- **User Impact**: Feature appeared to work but was completely non-functional for the intended use case
+- **Code Quality**: Missing a fundamental architectural component
+- **Security**: Original design would have required storing unencrypted PINs or keeping vault always unlocked
+- **Documentation**: Exposed gap in documenting authentication patterns
+
+---

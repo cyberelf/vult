@@ -14,8 +14,8 @@
     $vaultStore.biometricAvailability === 'available'
   );
 
-  function handleToggleBiometric() {
-    vaultStore.toggleBiometric(!$vaultStore.biometricEnabled);
+  async function handleToggleBiometric() {
+    await vaultStore.toggleBiometric(!$vaultStore.biometricEnabled);
   }
 
   function getBiometricStatusText(): string {

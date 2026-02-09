@@ -411,11 +411,82 @@ export async function checkBiometricAvailable(): Promise<BiometricAvailability> 
  */
 export async function unlockWithBiometric(args?: UnlockBiometricArgs): Promise<void> {
   try {
-    await invoke('unlock_with_biometric', {
+    const response = await invoke<CommandResponse<void>>('unlock_with_biometric', {
       message: args?.message || 'Unlock Vult API Vault',
     });
+    if (!response.success) {
+      throw new Error(response.error || 'Biometric unlock failed');
+    }
   } catch (error) {
     throw new Error(`Failed to unlock with biometric: ${error}`);
+  }
+}
+
+/**
+ * Enables biometric unlock by securely storing the PIN.
+ * Should be called after successful PIN unlock when the user enables Windows Hello.
+ * The PIN is encrypted with Windows DPAPI before storage.
+ *
+ * @param pin - The user's PIN to store securely
+ * @throws {Error} If PIN storage fails
+ *
+ * @example
+ * ```ts
+ * await enableBiometricStorage('my-secure-pin');
+ * ```
+ */
+export async function enableBiometricStorage(pin: string): Promise<void> {
+  try {
+    const response = await invoke<CommandResponse<void>>('enable_biometric_storage', { pin });
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to enable biometric storage');
+    }
+  } catch (error) {
+    throw new Error(`Failed to enable biometric storage: ${error}`);
+  }
+}
+
+/**
+ * Disables biometric unlock by deleting the stored PIN.
+ * Should be called when the user disables Windows Hello.
+ *
+ * @throws {Error} If disabling fails
+ *
+ * @example
+ * ```ts
+ * await disableBiometricStorage();
+ * ```
+ */
+export async function disableBiometricStorage(): Promise<void> {
+  try {
+    const response = await invoke<CommandResponse<void>>('disable_biometric_storage');
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to disable biometric storage');
+    }
+  } catch (error) {
+    throw new Error(`Failed to disable biometric storage: ${error}`);
+  }
+}
+
+/**
+ * Checks if biometric storage is currently enabled (PIN is stored).
+ *
+ * @returns true if a PIN is stored for biometric unlock
+ *
+ * @example
+ * ```ts
+ * const enabled = await isBiometricStorageEnabled();
+ * ```
+ */
+export async function isBiometricStorageEnabled(): Promise<boolean> {
+  try {
+    const response = await invoke<CommandResponse<boolean>>('is_biometric_storage_enabled');
+    if (!response.success || response.data === undefined) {
+      throw new Error(response.error || 'Failed to check biometric storage status');
+    }
+    return response.data;
+  } catch (error) {
+    throw new Error(`Failed to check biometric storage status: ${error}`);
   }
 }
 

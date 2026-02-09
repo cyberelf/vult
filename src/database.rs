@@ -158,6 +158,8 @@ impl FromRow<'_, SqliteRow> for EncryptedApiKeyRow {
 /// The vault database
 pub struct VaultDb {
     pub(crate) pool: Pool<Sqlite>,
+    /// Database path for per-vault credential storage
+    pub(crate) db_path: String,
 }
 
 /// Database schema version
@@ -167,7 +169,10 @@ impl VaultDb {
     /// Creates a new vault database connection pool
     pub async fn new(database_path: &str) -> Result<Self> {
         let pool = SqlitePool::connect(database_path).await?;
-        let db = Self { pool };
+        let db = Self { 
+            pool,
+            db_path: database_path.to_string(),
+        };
         db.init_schema().await?;
         db.migrate().await?;
         Ok(db)

@@ -160,6 +160,83 @@ pub async fn check_biometric_available(
     Ok(CommandResponse::success("not_supported".to_string()))
 }
 
+/// Enables biometric unlock by securely storing the PIN.
+///
+/// This should be called after successful PIN unlock when the user wants to enable
+/// Windows Hello for future unlocks. The PIN is encrypted with Windows DPAPI before storage.
+#[cfg(feature = "windows-biometric")]
+#[tauri::command]
+pub async fn enable_biometric_storage(
+    pin: String,
+    auth_manager: tauri::State<'_, Arc<AuthManager>>,
+) -> Result<CommandResponse<()>, String> {
+    auth_manager
+        .vault()
+        .auth()
+        .enable_biometric_storage(&pin)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(CommandResponse::success(()))
+}
+
+/// Stub for non-Windows platforms.
+#[cfg(not(feature = "windows-biometric"))]
+#[tauri::command]
+pub async fn enable_biometric_storage(
+    _pin: String,
+    _auth_manager: tauri::State<'_, Arc<AuthManager>>,
+) -> Result<CommandResponse<()>, String> {
+    Err("Biometric authentication is not supported on this platform".to_string())
+}
+
+/// Disables biometric unlock by deleting the stored PIN.
+#[cfg(feature = "windows-biometric")]
+#[tauri::command]
+pub async fn disable_biometric_storage(
+    auth_manager: tauri::State<'_, Arc<AuthManager>>,
+) -> Result<CommandResponse<()>, String> {
+    auth_manager
+        .vault()
+        .auth()
+        .disable_biometric_storage()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(CommandResponse::success(()))
+}
+
+/// Stub for non-Windows platforms.
+#[cfg(not(feature = "windows-biometric"))]
+#[tauri::command]
+pub async fn disable_biometric_storage(
+    _auth_manager: tauri::State<'_, Arc<AuthManager>>,
+) -> Result<CommandResponse<()>, String> {
+    Err("Biometric authentication is not supported on this platform".to_string())
+}
+
+/// Checks if biometric storage is currently enabled (PIN is stored).
+#[cfg(feature = "windows-biometric")]
+#[tauri::command]
+pub async fn is_biometric_storage_enabled(
+    auth_manager: tauri::State<'_, Arc<AuthManager>>,
+) -> Result<CommandResponse<bool>, String> {
+    let enabled = auth_manager
+        .vault()
+        .auth()
+        .is_biometric_storage_enabled();
+    Ok(CommandResponse::success(enabled))
+}
+
+/// Stub for non-Windows platforms.
+#[cfg(not(feature = "windows-biometric"))]
+#[tauri::command]
+pub async fn is_biometric_storage_enabled(
+    _auth_manager: tauri::State<'_, Arc<AuthManager>>,
+) -> Result<CommandResponse<bool>, String> {
+    Ok(CommandResponse::success(false))
+}
+
 /// Attempts to unlock the vault using biometric authentication (Windows Hello).
 ///
 /// Shows the Windows Hello prompt and unlocks the vault if verification succeeds.

@@ -25,6 +25,12 @@ mod windows_hello;
 #[cfg(all(windows, feature = "windows-biometric"))]
 pub use windows_hello::WindowsHelloProvider;
 
+#[cfg(all(windows, feature = "windows-biometric"))]
+mod credential_store;
+
+#[cfg(all(windows, feature = "windows-biometric"))]
+pub use credential_store::CredentialStore;
+
 // Mock provider for testing
 // Available in library unit tests or when windows-biometric feature is enabled (for integration tests)
 pub mod mock;

@@ -27,6 +27,8 @@ use tokio::sync::RwLock;
 use crate::core::{validate_pin, BiometricAvailability, MAX_PIN_LENGTH, MIN_PIN_LENGTH};
 #[cfg(feature = "windows-biometric")]
 use crate::core::BiometricProvider;
+#[cfg(feature = "windows-biometric")]
+use crate::biometric::CredentialStore;
 use crate::crypto::VaultKey;
 use crate::database::VaultDb;
 use crate::error::{Result, VaultError};
@@ -53,6 +55,8 @@ pub struct AuthService {
     failed_attempts: Arc<RwLock<u32>>,
     #[cfg(feature = "windows-biometric")]
     biometric_provider: Option<Arc<dyn BiometricProvider>>,
+    #[cfg(feature = "windows-biometric")]
+    credential_store: Option<CredentialStore>,
 }
 
 impl AuthService {
@@ -63,12 +67,17 @@ impl AuthService {
     /// * `db` - Database connection
     /// * `crypto` - Cryptographic service
     pub fn new(db: Arc<VaultDb>, crypto: Arc<CryptoService>) -> Self {
+        #[cfg(feature = "windows-biometric")]
+        let credential_store = CredentialStore::new(&db.db_path).ok();
+        
         Self {
             db,
             crypto,
             vault_key: Arc::new(RwLock::new(None)),
             is_unlocked: Arc::new(RwLock::new(false)),
             failed_attempts: Arc::new(RwLock::new(0)),
+            #[cfg(feature = "windows-biometric")]
+            credential_store,
             #[cfg(feature = "windows-biometric")]
             biometric_provider: None,
         }
@@ -483,21 +492,25 @@ impl AuthService {
     /// Attempts to unlock the vault using biometric authentication.
     ///
     /// This method uses the configured biometric provider to verify the user's
-    /// identity, then unlocks the vault using the stored PIN. The user's PIN
-    /// must be stored in the vault configuration for this to work.
+    /// identity, then retrieves the stored PIN and unlocks the vault.
+    ///
+    /// # Prerequisites
+    ///
+    /// - Biometric unlock must be enabled via `enable_biometric_storage()`
+    /// - User must have configured Windows Hello on their device
     ///
     /// # Returns
     ///
     /// - `Ok(())` if biometric verification succeeded and vault is unlocked
     /// - `Err(VaultError::BiometricFailed)` if biometric verification failed or was cancelled
-    /// - `Err(VaultError::NotInitialized)` if vault is not initialized
+    /// - `Err(VaultError::Locked)` if no PIN is stored for biometric unlock
     /// - `Err(...)` for other errors (database, crypto, etc.)
     ///
     /// # Security Note
     ///
-    /// Biometric unlock still requires the vault to be properly initialized with a PIN.
-    /// The biometric verification acts as a user authentication layer, after which
-    /// the vault performs the same PIN-based unlock process.
+    /// The PIN is stored encrypted with Windows DPAPI, which ties the encryption
+    /// to the current Windows user account. Only this user can decrypt it, and
+    /// only after successful biometric verification.
     ///
     /// # Example
     ///
@@ -513,26 +526,125 @@ impl AuthService {
     /// ```
     #[cfg(feature = "windows-biometric")]
     pub async fn unlock_with_biometric(&self, message: &str) -> Result<()> {
-        // Check if provider is configured
+        // Check if provider and credential store are configured
         let provider = self.biometric_provider.as_ref()
             .ok_or(VaultError::BiometricFailed)?;
+        let credential_store = self.credential_store.as_ref()
+            .ok_or(VaultError::BiometricFailed)?;
 
-        // Verify biometric
+        // Verify biometric FIRST - before accessing any credentials
         let verified = provider.verify(message).await?;
         if !verified {
             return Err(VaultError::BiometricFailed);
         }
 
-        // Biometric verification succeeded - retrieve stored vault key
-        // For now, we require the vault to be unlocked with PIN first
-        // In a future enhancement, we could store an encrypted master key
-        // that's decrypted only after biometric verification
+        // Biometric verification succeeded - retrieve stored PIN
+        let pin = credential_store.retrieve_pin()?;
+
+        // Use the PIN to unlock the vault normally
+        self.unlock(&pin).await?;
+
+        Ok(())
+    }
+
+    /// Enables biometric unlock by storing the PIN securely.
+    ///
+    /// This should be called after successful PIN unlock when the user wants to
+    /// enable Windows Hello for future unlocks. The PIN is encrypted with Windows
+    /// DPAPI before storage.
+    ///
+    /// # Arguments
+    ///
+    /// * `pin` - The user's PIN to store (vault must be already unlocked)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the vault is not unlocked or credential storage fails.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// // After successful unlock
+    /// auth_service.unlock("my-pin").await?;
+    ///
+    /// // Enable biometric
+    /// auth_service.enable_biometric_storage("my-pin").await?;
+    /// ```
+    #[cfg(feature = "windows-biometric")]
+    pub async fn enable_biometric_storage(&self, pin: &str) -> Result<()> {
+        // Verify vault is unlocked
         if !self.is_unlocked_async().await {
             return Err(VaultError::Locked);
         }
+        
+        // Validate the PIN is correct by deriving the key and comparing
+        // This prevents storing an incorrect PIN that would fail later
+        let pool = &self.db.pool;
+        let row = sqlx::query("SELECT salt, pin_hash FROM vault_config WHERE id = 1")
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| VaultError::Database(e.to_string()))?
+            .ok_or(VaultError::NotInitialized)?;
 
-        // Already unlocked - biometric acts as confirmation
+        use sqlx::Row;
+        let salt: Vec<u8> = row.get("salt");
+        let mut salt_array = [0u8; 32];
+        if salt.len() != 32 {
+            return Err(VaultError::Database("Invalid salt length".to_string()));
+        }
+        salt_array.copy_from_slice(&salt);
+
+        // Derive key from provided PIN
+        let derived_key = self.crypto.derive_master_key(pin, &salt_array)?;
+
+        // Verify the PIN is correct by comparing with stored hash
+        let stored_hash: String = row.get("pin_hash");
+        let parts: Vec<&str> = stored_hash.split(':').collect();
+        let expected_byte = parts
+            .get(1)
+            .and_then(|s| s.parse::<u8>().ok())
+            .unwrap_or(255);
+
+        if derived_key.as_bytes()[0] != expected_byte {
+            return Err(VaultError::InvalidPin);
+        }
+
+        // PIN is valid - store it encrypted with DPAPI
+        let credential_store = self.credential_store.as_ref()
+            .ok_or(VaultError::BiometricFailed)?;
+        credential_store.store_pin(pin)?;
+
         Ok(())
+    }
+
+    /// Disables biometric unlock by deleting the stored PIN.
+    ///
+    /// This should be called when the user wants to disable Windows Hello.
+    /// The vault remains unlocked if it was unlocked before this call.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// auth_service.disable_biometric_storage().await?;
+    /// ```
+    #[cfg(feature = "windows-biometric")]
+    pub async fn disable_biometric_storage(&self) -> Result<()> {
+        let credential_store = self.credential_store.as_ref()
+            .ok_or(VaultError::BiometricFailed)?;
+        credential_store.delete_pin()?;
+        Ok(())
+    }
+
+    /// Checks if biometric unlock is currently enabled (PIN is stored).
+    ///
+    /// # Returns
+    ///
+    /// `true` if a PIN is stored for biometric unlock, `false` otherwise.
+    #[cfg(feature = "windows-biometric")]
+    pub fn is_biometric_storage_enabled(&self) -> bool {
+        self.credential_store.as_ref()
+            .map(|cs| cs.has_stored_pin())
+            .unwrap_or(false)
     }
 
     /// Stub for non-Windows platforms to maintain API compatibility.
@@ -542,6 +654,25 @@ impl AuthService {
     pub async fn unlock_with_biometric(&self, _message: &str) -> Result<()> {
         Err(VaultError::BiometricFailed)
     }
+
+    /// Stub for non-Windows platforms to maintain API compatibility.
+    #[cfg(not(feature = "windows-biometric"))]
+    pub async fn enable_biometric_storage(&self, _pin: &str) -> Result<()> {
+        Err(VaultError::BiometricFailed)
+    }
+
+    /// Stub for non-Windows platforms to maintain API compatibility.
+    #[cfg(not(feature = "windows-biometric"))]
+    pub async fn disable_biometric_storage(&self) -> Result<()> {
+        Err(VaultError::BiometricFailed)
+    }
+
+    /// Stub for non-Windows platforms to maintain API compatibility.
+    #[cfg(not(feature = "windows-biometric"))]
+    pub fn is_biometric_storage_enabled(&self) -> bool {
+        false
+    }
+
 }
 
 #[cfg(test)]

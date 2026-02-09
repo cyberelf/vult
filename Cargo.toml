@@ -62,7 +62,12 @@ ctrlc = { version = "3.4", optional = true }
 # Requires Windows 10 version 1903 (build 18362) or later for UserConsentVerifier API
 # Supported on Windows 10 (1903+) and Windows 11
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.58", features = ["Security_Credentials_UI"], optional = true }
+windows = { version = "0.58", features = [
+    "Security_Credentials_UI",
+    "Win32_Security_Cryptography",
+    "Win32_Foundation",
+    "Win32_System_Memory"
+], optional = true }
 
 [features]
 default = ["gui", "cli"]
