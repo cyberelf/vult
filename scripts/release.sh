@@ -48,12 +48,6 @@ cargo test --lib || { echo -e "${RED}Tests failed${NC}"; exit 1; }
 echo "Running clippy..."
 cargo clippy --lib --features gui,cli -- -D warnings || { echo -e "${RED}Clippy failed${NC}"; exit 1; }
 
-# Run cargo audit if available
-if command -v cargo-audit &> /dev/null; then
-    echo "Running cargo audit..."
-    cargo audit || echo -e "${YELLOW}Warning: cargo audit found issues${NC}"
-fi
-
 echo -e "${YELLOW}Building release binaries...${NC}"
 
 # Build library

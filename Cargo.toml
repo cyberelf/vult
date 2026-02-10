@@ -73,6 +73,7 @@ windows = { version = "0.62.2", features = [
     "Win32_System_Memory",
     "Win32_System_WinRT"
 ], optional = true }
+windows-future = { version = "0.3", optional = true }
 
 [features]
 default = ["gui", "cli"]
@@ -95,7 +96,7 @@ custom-protocol = ["tauri/custom-protocol"]
 # Behavior: Optional - PIN authentication always available as fallback
 # Privacy: Biometric data never leaves Windows security subsystem
 # Usage: cargo build --features windows-biometric
-windows-biometric = ["dep:windows"]
+windows-biometric = ["dep:windows", "dep:windows-future"]
 
 # Development feature - enables both GUI and CLI for development
 dev = ["gui", "cli"]

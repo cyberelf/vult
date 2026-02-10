@@ -97,10 +97,7 @@ cargo fmt
 # Run clippy
 cargo clippy --lib --features gui -- -D warnings
 
-# Run security audit
-cargo audit
-
-# Run cargo-deny (if installed)
+# Run cargo-deny for security audit and dependency checks
 cargo deny check
 ```
 

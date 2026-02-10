@@ -31,12 +31,18 @@
 //! }
 //! ```
 
-use windows::Security::Credentials::UI::{
-    UserConsentVerificationResult, UserConsentVerifier, UserConsentVerifierAvailability,
+use windows::{
+    core::HSTRING,
+    Security::Credentials::UI::{
+        UserConsentVerificationResult, UserConsentVerifier, UserConsentVerifierAvailability,
+    },
+    Win32::Foundation::HWND,
+    Win32::System::WinRT::IUserConsentVerifierInterop,
 };
+use windows_future::IAsyncOperation;
 
 use crate::core::{BiometricAvailability, BiometricProvider};
-use crate::error::Result;
+use crate::error::{Result, VaultError};
 
 /// Windows Hello biometric authentication provider.
 ///
@@ -91,17 +97,36 @@ impl BiometricProvider for WindowsHelloProvider {
     }
 
     async fn verify(&self, message: &str) -> Result<bool> {
-        let message_hstring = windows::core::HSTRING::from(message);
+        let message_hstring = HSTRING::from(message);
 
-        // TODO: Desktop window handle support requires further investigation
-        // The IUserConsentVerifierInterop API in windows-rs 0.62 may have changed
-        // For now, always use the standard UWP API
-        let _unused_hwnd = self.window_handle; // Prevent unused field warning
+        // Branch based on whether we have a window handle (desktop) or not (UWP)
+        if let Some(hwnd_value) = self.window_handle {
+            // Desktop app path: Use IUserConsentVerifierInterop for proper modal positioning
+            let hwnd = HWND(hwnd_value as *mut std::ffi::c_void);
 
-        // Use standard UWP API (works for both desktop and UWP apps)
-        let async_op = UserConsentVerifier::RequestVerificationAsync(&message_hstring)?;
-        let result = async_op.await?;
-        Ok(map_verification_result(result))
+            let operation: IAsyncOperation<UserConsentVerificationResult> = unsafe {
+                // Get the desktop interop interface and call the window-specific verification API
+                // We drop the interop reference before awaiting to maintain Send safety
+                let interop: IUserConsentVerifierInterop =
+                    windows::core::factory::<UserConsentVerifier, IUserConsentVerifierInterop>()
+                        .map_err(|_| VaultError::BiometricFailed)?;
+
+                interop
+                    .RequestVerificationForWindowAsync(hwnd, &message_hstring)
+                    .map_err(|_| VaultError::BiometricFailed)?
+                // interop is dropped here, before we await
+            };
+
+            // Await the async operation (interop is no longer in scope)
+            let result: UserConsentVerificationResult =
+                operation.await.map_err(|_| VaultError::BiometricFailed)?;
+            Ok(map_verification_result(result))
+        } else {
+            // UWP app path: Use standard API
+            let async_op = UserConsentVerifier::RequestVerificationAsync(&message_hstring)?;
+            let result = async_op.await?;
+            Ok(map_verification_result(result))
+        }
     }
 }
 

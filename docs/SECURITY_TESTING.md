@@ -83,22 +83,7 @@ cargo clippy --lib -- -W clippy::pedantic -W clippy::nursery
 
 Configuration in `clippy.toml`.
 
-#### cargo-audit (Dependency Vulnerabilities)
-
-```bash
-# Install
-cargo install cargo-audit
-
-# Run
-cargo audit
-
-# Check for specific advisory
-cargo audit --deny RUSTSEC-2021-0001
-```
-
-Updates advisory database from https://github.com/rustsec/advisory-db
-
-#### cargo-deny (License and Security)
+#### cargo-deny (Security Audits, License and Dependency Check)
 
 ```bash
 # Install
@@ -190,7 +175,7 @@ Before each release:
 
 - [ ] Run full test suite: `cargo test --all-features`
 - [ ] Run property tests with high iteration count: `PROPTEST_CASES=10000 cargo test crypto::proptests`
-- [ ] Run cargo-audit: `cargo audit`
+- [ ] Run cargo-deny: `cargo deny check advisories`
 - [ ] Run cargo-deny: `cargo deny check`
 - [ ] Run clippy with strict lints: `cargo clippy -- -D warnings`
 - [ ] Review any new `unsafe` blocks
@@ -207,7 +192,7 @@ Security checks automated in `.github/workflows/ci.yml`:
 
 ```yaml
 - name: Run cargo-audit
-  run: cargo audit
+  run: cargo deny check advisories
 
 - name: Run clippy
   run: cargo clippy --lib --features gui -- -D warnings

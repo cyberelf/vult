@@ -94,24 +94,6 @@ print_step "Running integration tests..."
 run_check "Integration tests" cargo test --test integration_test || true
 
 # ============================================================================
-# SECURITY JOB - Cargo audit
-# ============================================================================
-if [ "$SKIP_SLOW" = false ]; then
-    print_header "SECURITY JOB"
-    
-    print_step "Checking if cargo-audit is installed..."
-    if ! command -v cargo-audit &> /dev/null; then
-        print_warning "cargo-audit not installed, installing..."
-        cargo install cargo-audit
-    fi
-    
-    print_step "Running security audit..."
-    run_check "Security audit" cargo audit || true
-else
-    print_warning "Skipping security audit (--skip-slow enabled)"
-fi
-
-# ============================================================================
 # DENY JOB - Dependency check
 # ============================================================================
 if [ "$SKIP_SLOW" = false ]; then
