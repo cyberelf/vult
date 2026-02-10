@@ -34,9 +34,14 @@
   }
 </script>
 
-{#if open}
-  <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick={onClose}>
-    <div class="bg-card rounded-lg shadow-xl max-w-md w-full p-6 space-y-6" onclick={(e) => e.stopPropagation()}>
+  {#if open}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick={onClose} role="button" tabindex="-1">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <!-- svelte-ignore a11y_interactive_supports_focus -->
+    <div class="bg-card rounded-lg shadow-xl max-w-md w-full p-6 space-y-6" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
       <!-- Header -->
       <div class="space-y-2">
         <h2 class="text-2xl font-bold">Settings</h2>
@@ -55,7 +60,7 @@
         {#if biometricAvailable}
           <div class="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
             <div class="space-y-1 flex-1">
-              <Label class="text-sm font-medium">Enable Windows Hello</Label>
+              <Label className="text-sm font-medium">Enable Windows Hello</Label>
               <p class="text-xs text-muted-foreground">
                 Use biometric authentication to unlock the vault
               </p>
@@ -69,12 +74,13 @@
               }`}
               role="switch"
               aria-checked={$vaultStore.biometricEnabled}
+              aria-label="Toggle Windows Hello biometric authentication"
             >
               <span
                 class={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                   $vaultStore.biometricEnabled ? 'translate-x-6' : 'translate-x-1'
                 }`}
-              />
+              ></span>
             </button>
           </div>
 

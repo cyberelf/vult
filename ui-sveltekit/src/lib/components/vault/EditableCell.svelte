@@ -19,9 +19,16 @@
   }: Props = $props();
 
   let isEditing = $state(false);
-  let tempValue = $state(value);
+  let tempValue = $derived(value);
   let inputRef: HTMLInputElement | undefined = $state();
   let isSaving = $state(false);
+  
+  // Update temp value when entering edit mode
+  $effect(() => {
+    if (isEditing) {
+      tempValue = value;
+    }
+  });
 
   async function startEditing(e?: Event) {
     if (isSaving) return;

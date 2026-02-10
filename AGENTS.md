@@ -126,6 +126,19 @@ Classify the question into one of these categories:
 
 **MANDATORY after ANY code change:**
 
+**Quick Check Script** (Recommended):
+```bash
+# One-line quality check for backend
+./scripts/quick_check.sh backend
+
+# One-line quality check for frontend
+./scripts/quick_check.sh frontend
+
+# Check everything
+./scripts/quick_check.sh all
+```
+
+**Manual Quality Gates**:
 ```bash
 # 1. Linting - ALWAYS run for Rust changes
 cargo clippy --features "cli gui" -- -D warnings

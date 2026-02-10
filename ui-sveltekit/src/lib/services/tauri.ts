@@ -484,7 +484,8 @@ export async function isBiometricStorageEnabled(): Promise<boolean> {
     if (!response.success || response.data === undefined) {
       throw new Error(response.error || 'Failed to check biometric storage status');
     }
-    return response.data;
+    // Handle null case by defaulting to false
+    return response.data ?? false;
   } catch (error) {
     throw new Error(`Failed to check biometric storage status: ${error}`);
   }
@@ -539,8 +540,8 @@ export function createMockTauriApi() {
       console.log('[MOCK] updateApiKey', args);
       return {
         id: args.id,
-        app_name: args.appName,
-        key_name: args.keyName,
+        app_name: args.appName ?? null,
+        key_name: args.keyName ?? '',
         api_url: args.apiUrl ?? null,
         description: args.description ?? null,
         key_value: 'encrypted',

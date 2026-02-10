@@ -104,8 +104,12 @@
         {/if}
 
         <div class="text-xs text-muted-foreground">
-          <p>Created: {new Date(keyData.createdAt).toLocaleString()}</p>
-          <p>Updated: {new Date(keyData.updatedAt).toLocaleString()}</p>
+          {#if keyData.createdAt}
+            <p>Created: {new Date(keyData.createdAt).toLocaleString()}</p>
+          {/if}
+          {#if keyData.updatedAt}
+            <p>Updated: {new Date(keyData.updatedAt).toLocaleString()}</p>
+          {/if}
         </div>
 
         <!-- Actions -->

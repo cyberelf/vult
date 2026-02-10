@@ -13,6 +13,8 @@
     id?: string;
     name?: string;
     disabled?: boolean;
+    autocomplete?: string;
+    autofocus?: boolean;
   }
 
   export let type: InputType = 'text';
@@ -24,6 +26,8 @@
   export let id: string | undefined = undefined;
   export let name: string | undefined = undefined;
   export let disabled: boolean = false;
+  export let autocomplete: string | undefined = undefined;
+  export let autofocus: boolean = false;
 </script>
 
 <input

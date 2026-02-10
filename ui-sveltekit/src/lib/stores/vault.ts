@@ -3,7 +3,7 @@
  * Handles authentication, API keys, and screen routing
  */
 
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import type { ApiKey, ScreenState, BiometricAvailability } from '$lib/types';
 import * as tauri from '$lib/services/tauri';
 
@@ -173,8 +173,9 @@ function createVaultStore() {
         });
         
         // If biometric is available and enabled, automatically store PIN
-        if (currentState?.biometricAvailability === 'available' && 
-            currentState?.biometricEnabled) {
+        const unlockState = get(vaultStore);
+        if (unlockState.biometricAvailability === 'available' && 
+            unlockState.biometricEnabled) {
           try {
             await tauri.enableBiometricStorage(pin);
             update((s) => ({ ...s, biometricStorageEnabled: true }));
@@ -338,8 +339,8 @@ function createVaultStore() {
            appName: key.appName !== undefined ? key.appName : undefined,
            keyName: key.keyName !== undefined ? key.keyName : undefined,
            // Do not send keyValue for inline edits (only for full form updates)
-           apiUrl: key.apiUrl !== undefined ? key.apiUrl : undefined,
-           description: key.description !== undefined ? key.description : undefined,
+           apiUrl: key.apiUrl !== undefined ? (key.apiUrl ?? undefined) : undefined,
+           description: key.description !== undefined ? (key.description ?? undefined) : undefined,
          });
          
          // Update local state with the returned (fresh) key
