@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-02-10
+
+### Fixed
+- **Critical PIN verification vulnerability**: Repaired an issue where PIN verification used only the first byte of the derived key (leading to a ~0.4% collision rate). Fixes include:
+  - Use of full Blake3 hash for verification instead of a single byte.
+  - Added per-key salt into the verification hash for defense-in-depth.
+  - Implemented automatic on-open migration supporting three legacy formats to preserve existing vaults.
+- **Cryptography and build fixes**:
+  - Corrected RNG import in `src/crypto.rs` (RngCore) and other compile issues introduced during refactors.
+- **Dependency and policy fixes**:
+  - Resolved `cargo-deny` and license compliance issues reported by CI.
+  - Added advisory ignores for transitive Tauri/Linux dependencies that are not applicable to our Windows/macOS packaging.
+
+### Changed
+- **Security tooling**: Consolidated security checks under `cargo-deny` (replacing ad-hoc `cargo-audit` runs) and updated CI and local scripts accordingly.
+
+### Technical
+- Added `blake3` and `subtle` for secure hash and constant-time comparisons.
+- Updated `deny.toml` with targeted advisory and license allowances.
+- Migration and tests: added migration path and tests to ensure existing vaults remain unlockable.
+
 ## [0.2.1] - 2026-02-10
 
 ### Added
@@ -132,5 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Copy keys to clipboard with visual feedback
 - Inline editing in table view
 
+[0.2.2]: https://github.com/cyberelf/vult/releases/tag/v0.2.2
+[0.2.1]: https://github.com/cyberelf/vult/releases/tag/v0.2.1
 [0.2.0]: https://github.com/cyberelf/vult/releases/tag/v0.2.0
 [0.1.0]: https://github.com/yourusername/vult/releases/tag/v0.1.0

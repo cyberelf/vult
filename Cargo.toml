@@ -1,6 +1,6 @@
 [package]
 name = "vult"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "Secure API key vault with PIN authentication and AES-256-GCM encryption"
 license = "MIT"
