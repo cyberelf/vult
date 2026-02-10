@@ -16,18 +16,34 @@ targets = [
 [advisories]
 # The database to use for checking advisories
 db-path = "~/.cargo/advisory-db"
-# URL of the advisory database
-url = "https://github.com/rustsec/advisory-db"
-# Only check for vulnerabilities
-vulnerability = "deny"
-# Warn about unmaintained crates
-unmaintained = "warn"
-# Warn about unsound code
-unsound = "warn"
 # Warn about yanked crates
 yanked = "warn"
-# Ignore specific advisories (uncomment and add IDs if needed)
-# ignore = ["RUSTSEC-2020-0001"]
+# Ignore specific advisories that don't affect us
+ignore = [
+    # RSA Marvin attack - only affects MySQL connections (we only use SQLite)
+    "RUSTSEC-2023-0071",
+    # GTK3 unmaintained warnings - unavoidable Tauri dependencies on Linux
+    # These are maintained by Tauri team and safe for our GUI use case
+    "RUSTSEC-2024-0411", # gdkwayland-sys
+    "RUSTSEC-2024-0412", # gdk
+    "RUSTSEC-2024-0413", # atk
+    "RUSTSEC-2024-0414", # gdkx11-sys
+    "RUSTSEC-2024-0415", # gtk
+    "RUSTSEC-2024-0416", # atk-sys
+    "RUSTSEC-2024-0417", # gdkx11
+    "RUSTSEC-2024-0418", # gdk-sys
+    "RUSTSEC-2024-0419", # gtk3-macros
+    "RUSTSEC-2024-0420", # gtk-sys
+    "RUSTSEC-2024-0429", # glib unsound Iterator impl (Tauri dependency)
+    # Unmaintained crates from Tauri dependencies
+    "RUSTSEC-2024-0370", # proc-macro-error
+    "RUSTSEC-2025-0057", # fxhash
+    "RUSTSEC-2025-0075", # unic-char-range
+    "RUSTSEC-2025-0080", # unic-common
+    "RUSTSEC-2025-0081", # unic-char-property
+    "RUSTSEC-2025-0098", # unic-ucd-version
+    "RUSTSEC-2025-0100", # unic-ucd-ident
+]
 
 [licenses]
 # Allow these licenses
@@ -41,12 +57,10 @@ allow = [
     "Zlib",
     "MPL-2.0",
     "CC0-1.0",
-    "Unicode-DFS-2016",
+    "BSL-1.0",        # Boost Software License (used by clipboard-win)
+    "Unicode-3.0",    # Unicode License v3 (used by icu_* crates from Tauri)
+    "CDLA-Permissive-2.0",  # Community Data License (used by webpki-roots from SQLx)
 ]
-# How to handle unknown licenses
-unlicensed = "deny"
-# How to handle licenses not in the allow list
-default = "deny"
 # Confidence threshold for license detection
 confidence-threshold = 0.8
 # Crates to allow with any license (escape hatch)

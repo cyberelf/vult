@@ -256,7 +256,7 @@ impl AuthService {
 
         // Verify PIN - try multiple formats for backwards compatibility
         let stored_hash: String = row.get("pin_hash");
-        
+
         // Format 1: New secure format - Hash(key + salt) for defense-in-depth
         let mut hasher = blake3::Hasher::new();
         hasher.update(vault_key.as_bytes());
@@ -268,13 +268,21 @@ impl AuthService {
         let stored_hash_bytes = hex::decode(&stored_hash).unwrap_or_default();
         let computed_hash_new_bytes = hex::decode(&computed_hash_new).unwrap_or_default();
 
-        let new_format_matches = stored_hash_bytes.ct_eq(&computed_hash_new_bytes).unwrap_u8() != 0;
+        let new_format_matches = stored_hash_bytes
+            .ct_eq(&computed_hash_new_bytes)
+            .unwrap_u8()
+            != 0;
 
-        // Format 2: Intermediate format - Hash(key only) 
+        // Format 2: Intermediate format - Hash(key only)
         let intermediate_format_matches = if !new_format_matches {
-            let computed_hash_intermediate = hex::encode(blake3::hash(vault_key.as_bytes()).as_bytes());
-            let computed_hash_intermediate_bytes = hex::decode(&computed_hash_intermediate).unwrap_or_default();
-            stored_hash_bytes.ct_eq(&computed_hash_intermediate_bytes).unwrap_u8() != 0
+            let computed_hash_intermediate =
+                hex::encode(blake3::hash(vault_key.as_bytes()).as_bytes());
+            let computed_hash_intermediate_bytes =
+                hex::decode(&computed_hash_intermediate).unwrap_or_default();
+            stored_hash_bytes
+                .ct_eq(&computed_hash_intermediate_bytes)
+                .unwrap_u8()
+                != 0
         } else {
             false
         };
@@ -306,18 +314,21 @@ impl AuthService {
 
         // Auto-migrate to new format if using old format
         if intermediate_format_matches || original_format_matches {
-            let format_name = if original_format_matches { 
-                "original (first-byte)" 
-            } else { 
-                "intermediate (blake3-key)" 
+            let format_name = if original_format_matches {
+                "original (first-byte)"
+            } else {
+                "intermediate (blake3-key)"
             };
-            eprintln!("[INFO] Auto-migrating PIN verification from {} to new format (blake3 key+salt)", format_name);
-            
+            eprintln!(
+                "[INFO] Auto-migrating PIN verification from {} to new format (blake3 key+salt)",
+                format_name
+            );
+
             let mut hasher = blake3::Hasher::new();
             hasher.update(vault_key.as_bytes());
             hasher.update(&salt_array);
             let new_hash = hex::encode(hasher.finalize().as_bytes());
-            
+
             sqlx::query("UPDATE vault_config SET pin_hash = ?1 WHERE id = 1")
                 .bind(&new_hash)
                 .execute(pool)
@@ -924,7 +935,7 @@ mod tests {
         // Manually create a vault config with ORIGINAL hash format (first byte only)
         let salt = service.crypto.generate_salt();
         let vault_key = service.crypto.derive_master_key(pin, &salt).unwrap();
-        
+
         // Create original-format hash: "$hexsalt:123" where 123 is first byte
         let salt_hex = hex::encode(salt);
         let first_byte = vault_key.as_bytes()[0];
@@ -945,13 +956,15 @@ mod tests {
         .await
         .unwrap();
 
-        sqlx::query("INSERT INTO vault_config (id, salt, pin_hash, created_at) VALUES (1, ?1, ?2, ?3)")
-            .bind(salt.as_slice())
-            .bind(&original_format_hash)
-            .bind(chrono::Utc::now().timestamp())
-            .execute(pool)
-            .await
-            .unwrap();
+        sqlx::query(
+            "INSERT INTO vault_config (id, salt, pin_hash, created_at) VALUES (1, ?1, ?2, ?3)",
+        )
+        .bind(salt.as_slice())
+        .bind(&original_format_hash)
+        .bind(chrono::Utc::now().timestamp())
+        .execute(pool)
+        .await
+        .unwrap();
 
         // Should be able to unlock with original format
         service.unlock(pin).await.unwrap();
@@ -959,7 +972,7 @@ mod tests {
 
         // Verify that it auto-migrated to new format
         service.lock().await.unwrap();
-        
+
         // Should still work after lock/unlock (now using new format)
         service.unlock(pin).await.unwrap();
         assert!(service.is_unlocked());

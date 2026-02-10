@@ -213,6 +213,13 @@ impl From<aes_gcm::Error> for VaultError {
     }
 }
 
+#[cfg(all(windows, feature = "windows-biometric"))]
+impl From<windows::core::Error> for VaultError {
+    fn from(_err: windows::core::Error) -> Self {
+        VaultError::BiometricFailed
+    }
+}
+
 // =============================================================================
 // Conversion methods for context
 // =============================================================================

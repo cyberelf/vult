@@ -36,14 +36,13 @@
 //! ```
 
 use aes_gcm::{
-    aead::{Aead, AeadCore, KeyInit, OsRng},
+    aead::{rand_core::RngCore, Aead, AeadCore, KeyInit, OsRng},
     Aes256Gcm, Nonce,
 };
 use argon2::{
     password_hash::{PasswordHasher, SaltString},
     Algorithm, Argon2, Params, Version,
 };
-use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use zeroize::{Zeroize, ZeroizeOnDrop};
