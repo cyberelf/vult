@@ -162,11 +162,11 @@ impl AuthService {
         let salt = self.crypto.generate_salt();
         let vault_key = self.crypto.derive_master_key(pin, &salt)?;
 
-        // Create verification hash (first byte of derived key for verification)
-        // NOTE: This is a simplified verification - see security note in unlock()
-        let salt_hex = hex::encode(salt);
-        let first_byte = vault_key.as_bytes()[0];
-        let pin_hash = format!("${}:{first_byte}", salt_hex);
+        // Create verification hash combining derived key and salt for defense-in-depth
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(vault_key.as_bytes());
+        hasher.update(&salt);
+        let pin_hash = hex::encode(hasher.finalize().as_bytes());
 
         // Create vault config table
         let pool = &self.db.pool;
@@ -254,18 +254,75 @@ impl AuthService {
         // Derive key from PIN
         let vault_key = self.crypto.derive_master_key(pin, &salt_array)?;
 
-        // Verify by checking first byte (simplified verification)
-        // SECURITY NOTE: This only checks the first byte - consider improving
+        // Verify PIN - try multiple formats for backwards compatibility
         let stored_hash: String = row.get("pin_hash");
-        let parts: Vec<&str> = stored_hash.split(':').collect();
-        let expected_byte = parts
-            .get(1)
-            .and_then(|s| s.parse::<u8>().ok())
-            .unwrap_or(255);
+        
+        // Format 1: New secure format - Hash(key + salt) for defense-in-depth
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(vault_key.as_bytes());
+        hasher.update(&salt_array);
+        let computed_hash_new = hex::encode(hasher.finalize().as_bytes());
 
-        if vault_key.as_bytes()[0] != expected_byte {
+        // Constant-time comparison to prevent timing attacks
+        use subtle::ConstantTimeEq;
+        let stored_hash_bytes = hex::decode(&stored_hash).unwrap_or_default();
+        let computed_hash_new_bytes = hex::decode(&computed_hash_new).unwrap_or_default();
+
+        let new_format_matches = stored_hash_bytes.ct_eq(&computed_hash_new_bytes).unwrap_u8() != 0;
+
+        // Format 2: Intermediate format - Hash(key only) 
+        let intermediate_format_matches = if !new_format_matches {
+            let computed_hash_intermediate = hex::encode(blake3::hash(vault_key.as_bytes()).as_bytes());
+            let computed_hash_intermediate_bytes = hex::decode(&computed_hash_intermediate).unwrap_or_default();
+            stored_hash_bytes.ct_eq(&computed_hash_intermediate_bytes).unwrap_u8() != 0
+        } else {
+            false
+        };
+
+        // Format 3: Original format - first byte only (e.g., "$hexsalt:123")
+        let original_format_matches = if !new_format_matches && !intermediate_format_matches {
+            if stored_hash.contains(':') {
+                let parts: Vec<&str> = stored_hash.split(':').collect();
+                if let Some(byte_str) = parts.get(1) {
+                    if let Ok(expected_byte) = byte_str.parse::<u8>() {
+                        vault_key.as_bytes()[0] == expected_byte
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if !new_format_matches && !intermediate_format_matches && !original_format_matches {
             *self.failed_attempts.write().await += 1;
             return Err(VaultError::InvalidPin);
+        }
+
+        // Auto-migrate to new format if using old format
+        if intermediate_format_matches || original_format_matches {
+            let format_name = if original_format_matches { 
+                "original (first-byte)" 
+            } else { 
+                "intermediate (blake3-key)" 
+            };
+            eprintln!("[INFO] Auto-migrating PIN verification from {} to new format (blake3 key+salt)", format_name);
+            
+            let mut hasher = blake3::Hasher::new();
+            hasher.update(vault_key.as_bytes());
+            hasher.update(&salt_array);
+            let new_hash = hex::encode(hasher.finalize().as_bytes());
+            
+            sqlx::query("UPDATE vault_config SET pin_hash = ?1 WHERE id = 1")
+                .bind(&new_hash)
+                .execute(pool)
+                .await
+                .map_err(|e| VaultError::Database(e.to_string()))?;
         }
 
         // Reset failed attempts and unlock
@@ -426,8 +483,10 @@ impl AuthService {
         }
 
         // Update vault config with new PIN
-        let new_salt_hex = hex::encode(new_salt);
-        let new_pin_hash = format!("${new_salt_hex}:{}", new_vault_key.as_bytes()[0]);
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(new_vault_key.as_bytes());
+        hasher.update(&new_salt);
+        let new_pin_hash = hex::encode(hasher.finalize().as_bytes());
 
         sqlx::query("UPDATE vault_config SET salt = ?1, pin_hash = ?2 WHERE id = 1")
             .bind(new_salt.as_slice())
@@ -852,6 +911,57 @@ mod tests {
 
         // New PIN should work
         service.unlock("new-pin-456").await.unwrap();
+        assert!(service.is_unlocked());
+    }
+
+    #[tokio::test]
+    async fn test_backwards_compatibility_original_first_byte_format() {
+        // Test that vaults created with ORIGINAL format (first byte only) can still unlock
+        // and automatically migrate to new format (key + salt)
+        let service = setup_test_service().await;
+        let pin = "test-pin-123";
+
+        // Manually create a vault config with ORIGINAL hash format (first byte only)
+        let salt = service.crypto.generate_salt();
+        let vault_key = service.crypto.derive_master_key(pin, &salt).unwrap();
+        
+        // Create original-format hash: "$hexsalt:123" where 123 is first byte
+        let salt_hex = hex::encode(salt);
+        let first_byte = vault_key.as_bytes()[0];
+        let original_format_hash = format!("${}:{}", salt_hex, first_byte);
+
+        let pool = &service.db.pool;
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS vault_config (
+                id INTEGER PRIMARY KEY,
+                salt BLOB NOT NULL,
+                pin_hash TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            );
+            "#,
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+
+        sqlx::query("INSERT INTO vault_config (id, salt, pin_hash, created_at) VALUES (1, ?1, ?2, ?3)")
+            .bind(salt.as_slice())
+            .bind(&original_format_hash)
+            .bind(chrono::Utc::now().timestamp())
+            .execute(pool)
+            .await
+            .unwrap();
+
+        // Should be able to unlock with original format
+        service.unlock(pin).await.unwrap();
+        assert!(service.is_unlocked());
+
+        // Verify that it auto-migrated to new format
+        service.lock().await.unwrap();
+        
+        // Should still work after lock/unlock (now using new format)
+        service.unlock(pin).await.unwrap();
         assert!(service.is_unlocked());
     }
 

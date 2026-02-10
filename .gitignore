@@ -28,6 +28,10 @@ Cargo.lock
 *.swp
 *~
 
+# test artifacts
+*.profdata
+test_output.txt
+
 # Coverage files
 coverage/
 .tarpaulin/
