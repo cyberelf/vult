@@ -126,7 +126,7 @@ Classify the question into one of these categories:
 
 **MANDATORY after ANY code change:**
 
-**Quick Check Script** (Recommended):
+**Quick Check Script, linting formatting and type checking** 
 ```bash
 # One-line quality check for backend
 ./scripts/quick_check.sh backend
@@ -138,25 +138,14 @@ Classify the question into one of these categories:
 ./scripts/quick_check.sh all
 ```
 
-**Manual Quality Gates**:
+**Manual Quality Gates, related tests**:
+
 ```bash
-# 1. Linting - ALWAYS run for Rust changes
-cargo clippy --features "cli gui" -- -D warnings
+# Run related tests for backend changes
+cargo test --features "cli gui" --lib <relevant_module>
 
-# 2. Formatting check
-cargo fmt --check
-
-# 3. Type check
-cargo check --features "cli gui"
-
-# 4. Frontend build (if UI changes)
-cd ui-sveltekit && npm run build
-
-# 5. Run related tests
-cargo test <relevant_module>
-
-# 6. For critical changes, run full test suite
-cargo test --features "cli gui"
+# run related tests for frontend changes
+cd ui-sveltekit && npm run test -- <relevant_test_file>
 ```
 
 ### Step 3: Report Quality Gate Results
@@ -172,39 +161,6 @@ cargo test --features "cli gui"
 - Re-run quality gates
 - Only proceed after all gates pass
 
-### Examples
-
-#### ❌ BAD (No Quality Gates)
-```
-User: "Can you fix the unlock button styling?"
-Agent: [makes changes to UnlockScreen.svelte]
-Agent: "Done! The button now has consistent styling."
-# Missing: No build check, no clippy, no verification
-```
-
-#### ✅ GOOD (With Quality Gates)
-```
-User: "Can you fix the unlock button styling?"
-Agent: [makes changes to UnlockScreen.svelte]
-Agent: [runs npm run build in ui-sveltekit]
-Agent: [runs cargo clippy --features gui -- -D warnings]
-Agent: "✅ Changes complete. Quality checks:
-- Frontend build: ✅ Passed
-- Clippy: ✅ No warnings
-- Type check: ✅ Passed"
-```
-
-#### ✅ GOOD (Quality Gate Failure Caught)
-```
-User: "Can you add this new field to the struct?"
-Agent: [makes changes to types.rs]
-Agent: [runs cargo clippy]
-Output: "warning: unused variable `new_field`"
-Agent: "Found clippy warning. Fixing..."
-Agent: [fixes the issue]
-Agent: [re-runs clippy]
-Agent: "✅ Quality checks passed after fix"
-```
 
 ### Quality Gate Checklist by Change Type
 
