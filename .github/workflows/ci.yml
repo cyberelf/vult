@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         
       - name: Install system dependencies
         run: |
@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         
       - name: Install system dependencies
         run: |
@@ -70,7 +70,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install cargo-audit
         run: cargo install cargo-audit
@@ -85,7 +85,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install cargo-deny
         run: cargo install cargo-deny
@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build library
         run: cargo build --lib --release
