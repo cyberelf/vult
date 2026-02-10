@@ -540,7 +540,7 @@ export function createMockTauriApi() {
       console.log('[MOCK] updateApiKey', args);
       return {
         id: args.id,
-        app_name: args.appName ?? null,
+        app_name: args.appName ?? '',  // Default to empty string for required field
         key_name: args.keyName ?? '',
         api_url: args.apiUrl ?? null,
         description: args.description ?? null,
