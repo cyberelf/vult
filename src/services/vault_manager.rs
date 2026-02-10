@@ -106,7 +106,7 @@ impl VaultManager {
 
         // Initialize services
         let crypto_service = Arc::new(CryptoService::new());
-        
+
         // Create auth service with optional biometric provider
         #[cfg(feature = "windows-biometric")]
         let auth_service = {
@@ -117,13 +117,13 @@ impl VaultManager {
                     .with_biometric_provider(provider),
             )
         };
-        
+
         #[cfg(not(feature = "windows-biometric"))]
         let auth_service = Arc::new(AuthService::new(
             Arc::clone(&db),
             Arc::clone(&crypto_service),
         ));
-        
+
         let key_service = Arc::new(KeyService::new(
             Arc::clone(&db),
             Arc::clone(&crypto_service),

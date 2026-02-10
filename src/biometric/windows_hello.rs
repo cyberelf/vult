@@ -99,30 +99,28 @@ impl BiometricProvider for WindowsHelloProvider {
         // If we have a window handle, use the desktop interop API
         if let Some(hwnd_value) = self.window_handle {
             let hwnd = HWND(hwnd_value as *mut _);
-            
+
             // Get the IUserConsentVerifierInterop interface for desktop apps
-            let factory: IUserConsentVerifierInterop = windows::core::factory::<UserConsentVerifier, IUserConsentVerifierInterop>()
-                .map_err(|_| VaultError::BiometricFailed)?;
-            
+            let factory: IUserConsentVerifierInterop =
+                windows::core::factory::<UserConsentVerifier, IUserConsentVerifierInterop>()
+                    .map_err(|_| VaultError::BiometricFailed)?;
+
             // Call RequestVerificationForWindowAsync with HWND (desktop API)
             let async_op: IAsyncOperation<UserConsentVerificationResult> = unsafe {
-                factory.RequestVerificationForWindowAsync(hwnd, &message_hstring)
+                factory
+                    .RequestVerificationForWindowAsync(hwnd, &message_hstring)
                     .map_err(|_| VaultError::BiometricFailed)?
             };
-            
-            let result = async_op
-                .get()
-                .map_err(|_| VaultError::BiometricFailed)?;
-            
+
+            let result = async_op.get().map_err(|_| VaultError::BiometricFailed)?;
+
             Ok(map_verification_result(result))
         } else {
             // No window handle - use standard UWP API
             let async_op = UserConsentVerifier::RequestVerificationAsync(&message_hstring)
                 .map_err(|_| VaultError::BiometricFailed)?;
 
-            let result = async_op
-                .get()
-                .map_err(|_| VaultError::BiometricFailed)?;
+            let result = async_op.get().map_err(|_| VaultError::BiometricFailed)?;
 
             Ok(map_verification_result(result))
         }
@@ -130,11 +128,17 @@ impl BiometricProvider for WindowsHelloProvider {
 }
 
 /// Maps Windows UserConsentVerifierAvailability to BiometricAvailability.
-fn map_windows_availability(availability: UserConsentVerifierAvailability) -> BiometricAvailability {
+fn map_windows_availability(
+    availability: UserConsentVerifierAvailability,
+) -> BiometricAvailability {
     match availability {
         UserConsentVerifierAvailability::Available => BiometricAvailability::Available,
-        UserConsentVerifierAvailability::DeviceNotPresent => BiometricAvailability::DeviceNotPresent,
-        UserConsentVerifierAvailability::NotConfiguredForUser => BiometricAvailability::NotConfigured,
+        UserConsentVerifierAvailability::DeviceNotPresent => {
+            BiometricAvailability::DeviceNotPresent
+        }
+        UserConsentVerifierAvailability::NotConfiguredForUser => {
+            BiometricAvailability::NotConfigured
+        }
         UserConsentVerifierAvailability::DisabledByPolicy => BiometricAvailability::NotConfigured,
         UserConsentVerifierAvailability::DeviceBusy => BiometricAvailability::NotConfigured,
         _ => BiometricAvailability::NotSupported,
@@ -157,7 +161,7 @@ mod tests {
     fn test_provider_creation() {
         let provider = WindowsHelloProvider::new();
         assert!(provider.window_handle.is_none());
-        
+
         let provider_with_hwnd = WindowsHelloProvider::with_window_handle(12345);
         assert_eq!(provider_with_hwnd.window_handle, Some(12345));
     }
@@ -184,10 +188,20 @@ mod tests {
 
     #[test]
     fn test_verification_result_mapping() {
-        assert!(map_verification_result(UserConsentVerificationResult::Verified));
-        assert!(!map_verification_result(UserConsentVerificationResult::DeviceNotPresent));
-        assert!(!map_verification_result(UserConsentVerificationResult::NotConfiguredForUser));
-        assert!(!map_verification_result(UserConsentVerificationResult::DisabledByPolicy));
-        assert!(!map_verification_result(UserConsentVerificationResult::Canceled));
+        assert!(map_verification_result(
+            UserConsentVerificationResult::Verified
+        ));
+        assert!(!map_verification_result(
+            UserConsentVerificationResult::DeviceNotPresent
+        ));
+        assert!(!map_verification_result(
+            UserConsentVerificationResult::NotConfiguredForUser
+        ));
+        assert!(!map_verification_result(
+            UserConsentVerificationResult::DisabledByPolicy
+        ));
+        assert!(!map_verification_result(
+            UserConsentVerificationResult::Canceled
+        ));
     }
 }

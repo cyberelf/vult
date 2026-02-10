@@ -582,7 +582,6 @@ mod tests {
         (key_service, auth)
     }
 
-  
     #[tokio::test]
     async fn test_create_key() {
         let (service, _auth) = setup_test_services().await;
@@ -1047,7 +1046,13 @@ mod tests {
         let (service, _auth) = setup_test_services().await;
 
         let id = service
-            .create(Some("github"), "token", "secret123", None, Some("Old description"))
+            .create(
+                Some("github"),
+                "token",
+                "secret123",
+                None,
+                Some("Old description"),
+            )
             .await
             .unwrap();
 

@@ -59,12 +59,12 @@ impl CredentialStore {
     pub fn new(vault_db_path: &str) -> Result<Self> {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         // Hash the database path to create a unique identifier
         let mut hasher = DefaultHasher::new();
         vault_db_path.hash(&mut hasher);
         let hash = hasher.finish();
-        
+
         let storage_path = dirs::home_dir()
             .ok_or(VaultError::BiometricFailed)?
             .join(".vult")
@@ -153,13 +153,13 @@ impl CredentialStore {
 
             // Call CryptProtectData
             let result = CryptProtectData(
-                &input_blob as *const _ as *const CRYPT_INTEGER_BLOB,
+                &input_blob as *const _,
                 None, // Optional description
                 None, // Optional entropy
                 None, // Reserved
                 None, // Optional prompt struct
                 0,    // Flags
-                &mut output_blob as *mut _ as *mut CRYPT_INTEGER_BLOB,
+                &mut output_blob as *mut _,
             );
 
             if result.is_err() {
@@ -167,7 +167,9 @@ impl CredentialStore {
             }
 
             // Copy encrypted data to Vec
-            let encrypted = std::slice::from_raw_parts(output_blob.pbData, output_blob.cbData as usize).to_vec();
+            let encrypted =
+                std::slice::from_raw_parts(output_blob.pbData, output_blob.cbData as usize)
+                    .to_vec();
 
             // Free the output buffer (DPAPI allocated it)
             // Use direct FFI call since LocalFree might not be available in all windows-rs versions
@@ -197,13 +199,13 @@ impl CredentialStore {
 
             // Call CryptUnprotectData
             let result = CryptUnprotectData(
-                &input_blob as *const _ as *const CRYPT_INTEGER_BLOB,
+                &input_blob as *const _,
                 None, // Optional description output
                 None, // Optional entropy
                 None, // Reserved
                 None, // Optional prompt struct
                 0,    // Flags
-                &mut output_blob as *mut _ as *mut CRYPT_INTEGER_BLOB,
+                &mut output_blob as *mut _,
             );
 
             if result.is_err() {
@@ -211,7 +213,9 @@ impl CredentialStore {
             }
 
             // Copy decrypted data to Vec
-            let decrypted = std::slice::from_raw_parts(output_blob.pbData, output_blob.cbData as usize).to_vec();
+            let decrypted =
+                std::slice::from_raw_parts(output_blob.pbData, output_blob.cbData as usize)
+                    .to_vec();
 
             // Free the output buffer
             #[link(name = "kernel32")]

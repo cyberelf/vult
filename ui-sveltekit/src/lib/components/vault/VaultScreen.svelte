@@ -14,7 +14,8 @@
   import SettingsModal from '$lib/components/modals/SettingsModal.svelte';
   import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 
-  const VERSION = '0.2.0';
+  // Version is injected at build time from tauri.conf.json (see app.d.ts)
+  const VERSION = __APP_VERSION__;
 
   let settingsOpen = $state(false);
 </script>

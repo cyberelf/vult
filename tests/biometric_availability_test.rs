@@ -51,7 +51,10 @@ mod with_biometric_feature {
 
         // Should NOT return NotSupported when feature is enabled
         // (unless Windows Hello is truly not available on this system)
-        println!("Biometric availability from VaultManager: {:?}", availability);
+        println!(
+            "Biometric availability from VaultManager: {:?}",
+            availability
+        );
 
         // Test that the availability is deterministic
         let availability2 = vault.auth().check_biometric_availability().await;
@@ -96,7 +99,7 @@ mod with_biometric_feature {
         // If this test runs, we know the feature flag is active
 
         println!("✓ windows-biometric feature flag is ACTIVE");
-        
+
         // Verify we can create a WindowsHelloProvider
         let _provider = WindowsHelloProvider::new();
         println!("✓ WindowsHelloProvider can be instantiated");
@@ -104,10 +107,10 @@ mod with_biometric_feature {
         // Verify VaultManager initializes with provider
         let (_temp_dir, vault) = create_test_vault().await;
         let availability = vault.auth().check_biometric_availability().await;
-        
+
         // Log what we got
         println!("Availability from vault: {:?}", availability);
-        
+
         // If feature is enabled, we should NEVER get NotSupported
         // (we might get other states if hardware isn't present, but provider should be set)
         assert_ne!(

@@ -53,9 +53,7 @@ async fn test_biometric_unlock_success() {
     let mock_provider = MockBiometricProvider::new();
 
     // Initialize vault
-    let manager = VaultManager::new(&db_url)
-        .await
-        .unwrap();
+    let manager = VaultManager::new(&db_url).await.unwrap();
     let pin = "test123456";
     manager.auth().init_vault(pin).await.unwrap();
 
@@ -87,9 +85,7 @@ async fn test_biometric_unlock_failure() {
     let mock_provider = MockBiometricProvider::new();
 
     // Initialize vault
-    let manager = VaultManager::new(&db_url)
-        .await
-        .unwrap();
+    let manager = VaultManager::new(&db_url).await.unwrap();
     let pin = "test123456";
     manager.auth().init_vault(pin).await.unwrap();
 
@@ -110,7 +106,7 @@ async fn test_biometric_unlock_failure() {
 
     // Verify the provider was called
     assert_eq!(mock_provider.verify_call_count(), 1);
-    
+
     // Vault should still be locked
     assert!(!manager.is_unlocked());
 }
@@ -121,9 +117,7 @@ async fn test_biometric_fallback_to_pin() {
     let mock_provider = MockBiometricProvider::new();
 
     // Initialize vault
-    let manager = VaultManager::new(&db_url)
-        .await
-        .unwrap();
+    let manager = VaultManager::new(&db_url).await.unwrap();
     let pin = "test123456";
     manager.auth().init_vault(pin).await.unwrap();
 
@@ -160,9 +154,7 @@ async fn test_biometric_not_available_fallback() {
     let mock_provider = MockBiometricProvider::new();
 
     // Initialize vault
-    let manager = VaultManager::new(&db_url)
-        .await
-        .unwrap();
+    let manager = VaultManager::new(&db_url).await.unwrap();
     let pin = "test123456";
     manager.auth().init_vault(pin).await.unwrap();
     manager.auth().lock().await.unwrap();
@@ -189,9 +181,7 @@ async fn test_multiple_biometric_attempts() {
     let mock_provider = MockBiometricProvider::new();
 
     // Initialize vault
-    let manager = VaultManager::new(&db_url)
-        .await
-        .unwrap();
+    let manager = VaultManager::new(&db_url).await.unwrap();
     let pin = "test123456";
     manager.auth().init_vault(pin).await.unwrap();
 
@@ -225,7 +215,7 @@ async fn test_multiple_biometric_attempts() {
 #[tokio::test]
 async fn test_mock_provider_call_counting() {
     let mock_provider = MockBiometricProvider::new();
-    
+
     mock_provider.set_availability(BiometricAvailability::Available);
     mock_provider.set_should_verify(true);
 

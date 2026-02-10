@@ -221,10 +221,7 @@ pub async fn disable_biometric_storage(
 pub async fn is_biometric_storage_enabled(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<CommandResponse<bool>, String> {
-    let enabled = auth_manager
-        .vault()
-        .auth()
-        .is_biometric_storage_enabled();
+    let enabled = auth_manager.vault().auth().is_biometric_storage_enabled();
     Ok(CommandResponse::success(enabled))
 }
 
@@ -249,16 +246,16 @@ pub async fn unlock_with_biometric(
     auth_manager: tauri::State<'_, Arc<AuthManager>>,
 ) -> Result<CommandResponse<()>, String> {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-    
+
     // Extract HWND from Tauri window for proper Windows Hello modal parenting
     let hwnd = window
         .window_handle()
         .ok()
         .and_then(|handle| match handle.as_raw() {
-            RawWindowHandle::Win32(win32_handle) => Some(win32_handle.hwnd.get() as isize),
+            RawWindowHandle::Win32(win32_handle) => Some(win32_handle.hwnd.get()),
             _ => None,
         });
-    
+
     // Pass HWND to Windows Hello for proper desktop app integration
     if let Some(hwnd_value) = hwnd {
         auth_manager
@@ -276,7 +273,7 @@ pub async fn unlock_with_biometric(
             .await
             .map_err(|e| e.to_string())?;
     }
-    
+
     Ok(CommandResponse::success(()))
 }
 
@@ -449,7 +446,7 @@ pub async fn update_api_key(
         app_name: input.app_name.map(Some), // Option<String> -> Option<Option<String>>
         key_name: input.key_name,
         key_value: input.key_value,
-        api_url: input.api_url, // Already Option<Option<String>>
+        api_url: input.api_url,         // Already Option<Option<String>>
         description: input.description, // Already Option<Option<String>>
     };
 

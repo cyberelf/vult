@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use vult::services::{VaultManager, key_service::UpdateKeyRequest};
+use vult::services::{key_service::UpdateKeyRequest, VaultManager};
 
 /// Helper to create test vault with a temporary database
 async fn setup_test_vault(test_name: &str) -> (VaultManager, PathBuf) {
@@ -17,12 +17,16 @@ async fn setup_test_vault(test_name: &str) -> (VaultManager, PathBuf) {
         .expect("Failed to create vault");
 
     // Initialize vault
-    vault.auth().init_vault("test-pin-123")
+    vault
+        .auth()
+        .init_vault("test-pin-123")
         .await
         .expect("Failed to init vault");
 
     // Unlock vault for testing
-    vault.auth().unlock("test-pin-123")
+    vault
+        .auth()
+        .unlock("test-pin-123")
         .await
         .expect("Failed to unlock vault");
 
@@ -44,13 +48,18 @@ async fn test_inline_edit_app_name_change() {
     let (vault, db_path) = setup_test_vault("app_name_change").await;
 
     // Create a key with app_name "github"
-    let id = vault.keys()
+    let id = vault
+        .keys()
         .create(Some("github"), "token", "ghp_secret123", None, None)
         .await
         .expect("Failed to create key");
 
     // Verify the key exists
-    let original_key = vault.keys().get("github", "token").await.expect("Key not found");
+    let original_key = vault
+        .keys()
+        .get("github", "token")
+        .await
+        .expect("Key not found");
     assert_eq!(original_key.app_name, Some("github".to_string()));
     assert_eq!(original_key.key_name, "token");
     assert_eq!(original_key.key_value, "ghp_secret123");
@@ -61,10 +70,18 @@ async fn test_inline_edit_app_name_change() {
         ..Default::default()
     };
 
-    vault.keys().update(&id, update_request).await.expect("Failed to update key");
+    vault
+        .keys()
+        .update(&id, update_request)
+        .await
+        .expect("Failed to update key");
 
     // Verify the key can now be accessed with new app_name
-    let updated_key = vault.keys().get("gitlab", "token").await.expect("Key not found");
+    let updated_key = vault
+        .keys()
+        .get("gitlab", "token")
+        .await
+        .expect("Key not found");
     assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
     assert_eq!(updated_key.key_name, "token");
     assert_eq!(updated_key.key_value, "ghp_secret123");
@@ -83,13 +100,18 @@ async fn test_inline_edit_key_name_change() {
     let (vault, db_path) = setup_test_vault("key_name_change").await;
 
     // Create a key with key_name "token"
-    let id = vault.keys()
+    let id = vault
+        .keys()
         .create(Some("github"), "token", "ghp_secret123", None, None)
         .await
         .expect("Failed to create key");
 
     // Verify the key exists
-    let original_key = vault.keys().get("github", "token").await.expect("Key not found");
+    let original_key = vault
+        .keys()
+        .get("github", "token")
+        .await
+        .expect("Key not found");
     assert_eq!(original_key.app_name, Some("github".to_string()));
     assert_eq!(original_key.key_name, "token");
     assert_eq!(original_key.key_value, "ghp_secret123");
@@ -100,10 +122,18 @@ async fn test_inline_edit_key_name_change() {
         ..Default::default()
     };
 
-    vault.keys().update(&id, update_request).await.expect("Failed to update key");
+    vault
+        .keys()
+        .update(&id, update_request)
+        .await
+        .expect("Failed to update key");
 
     // Verify the key can now be accessed with new key_name
-    let updated_key = vault.keys().get("github", "personal-token").await.expect("Key not found");
+    let updated_key = vault
+        .keys()
+        .get("github", "personal-token")
+        .await
+        .expect("Key not found");
     assert_eq!(updated_key.app_name, Some("github".to_string()));
     assert_eq!(updated_key.key_name, "personal-token");
     assert_eq!(updated_key.key_value, "ghp_secret123");
@@ -122,13 +152,18 @@ async fn test_inline_edit_both_name_changes() {
     let (vault, db_path) = setup_test_vault("both_name_change").await;
 
     // Create a key with app_name "github" and key_name "token"
-    let id = vault.keys()
+    let id = vault
+        .keys()
         .create(Some("github"), "token", "ghp_secret123", None, None)
         .await
         .expect("Failed to create key");
 
     // Verify the key exists
-    let original_key = vault.keys().get("github", "token").await.expect("Key not found");
+    let original_key = vault
+        .keys()
+        .get("github", "token")
+        .await
+        .expect("Key not found");
     assert_eq!(original_key.app_name, Some("github".to_string()));
     assert_eq!(original_key.key_name, "token");
     assert_eq!(original_key.key_value, "ghp_secret123");
@@ -140,10 +175,18 @@ async fn test_inline_edit_both_name_changes() {
         ..Default::default()
     };
 
-    vault.keys().update(&id, update_request).await.expect("Failed to update key");
+    vault
+        .keys()
+        .update(&id, update_request)
+        .await
+        .expect("Failed to update key");
 
     // Verify the key can now be accessed with new names
-    let updated_key = vault.keys().get("gitlab", "access-token").await.expect("Key not found");
+    let updated_key = vault
+        .keys()
+        .get("gitlab", "access-token")
+        .await
+        .expect("Key not found");
     assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
     assert_eq!(updated_key.key_name, "access-token");
     assert_eq!(updated_key.key_value, "ghp_secret123");
@@ -168,7 +211,8 @@ async fn test_inline_edit_app_name_to_none() {
     let (vault, db_path) = setup_test_vault("app_name_to_none").await;
 
     // Create a key with app_name "github"
-    let id = vault.keys()
+    let id = vault
+        .keys()
         .create(Some("github"), "token", "ghp_secret123", None, None)
         .await
         .expect("Failed to create key");
@@ -179,7 +223,11 @@ async fn test_inline_edit_app_name_to_none() {
         ..Default::default()
     };
 
-    vault.keys().update(&id, update_request).await.expect("Failed to update key");
+    vault
+        .keys()
+        .update(&id, update_request)
+        .await
+        .expect("Failed to update key");
 
     // Verify the key can be accessed with no app_name
     let updated_key = vault.keys().get("", "token").await.expect("Key not found");
@@ -201,7 +249,8 @@ async fn test_inline_edit_from_no_app_name() {
     let (vault, db_path) = setup_test_vault("no_app_name").await;
 
     // Create a key with no app_name
-    let id = vault.keys()
+    let id = vault
+        .keys()
         .create(None, "token", "ghp_secret123", None, None)
         .await
         .expect("Failed to create key");
@@ -212,10 +261,18 @@ async fn test_inline_edit_from_no_app_name() {
         ..Default::default()
     };
 
-    vault.keys().update(&id, update_request).await.expect("Failed to update key");
+    vault
+        .keys()
+        .update(&id, update_request)
+        .await
+        .expect("Failed to update key");
 
     // Verify the key can be accessed with new app_name
-    let updated_key = vault.keys().get("gitlab", "token").await.expect("Key not found");
+    let updated_key = vault
+        .keys()
+        .get("gitlab", "token")
+        .await
+        .expect("Key not found");
     assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
     assert_eq!(updated_key.key_name, "token");
     assert_eq!(updated_key.key_value, "ghp_secret123");
@@ -234,7 +291,8 @@ async fn test_inline_edit_value_and_app_name_change() {
     let (vault, db_path) = setup_test_vault("value_app_change").await;
 
     // Create a key with app_name "github" and value "old_value"
-    let id = vault.keys()
+    let id = vault
+        .keys()
         .create(Some("github"), "token", "old_value", None, None)
         .await
         .expect("Failed to create key");
@@ -246,10 +304,18 @@ async fn test_inline_edit_value_and_app_name_change() {
         ..Default::default()
     };
 
-    vault.keys().update(&id, update_request).await.expect("Failed to update key");
+    vault
+        .keys()
+        .update(&id, update_request)
+        .await
+        .expect("Failed to update key");
 
     // Verify the key can be accessed with new app_name and has new value
-    let updated_key = vault.keys().get("gitlab", "token").await.expect("Key not found");
+    let updated_key = vault
+        .keys()
+        .get("gitlab", "token")
+        .await
+        .expect("Key not found");
     assert_eq!(updated_key.app_name, Some("gitlab".to_string()));
     assert_eq!(updated_key.key_name, "token");
     assert_eq!(updated_key.key_value, "new_value");
@@ -286,8 +352,15 @@ async fn test_inline_edit_metadata_only() {
     let (vault, db_path) = setup_test_vault("metadata_only").await;
 
     // Create a key with description
-    let id = vault.keys()
-        .create(Some("github"), "token", "ghp_secret123", None, Some("Old description"))
+    let id = vault
+        .keys()
+        .create(
+            Some("github"),
+            "token",
+            "ghp_secret123",
+            None,
+            Some("Old description"),
+        )
         .await
         .expect("Failed to create key");
 
@@ -297,10 +370,18 @@ async fn test_inline_edit_metadata_only() {
         ..Default::default()
     };
 
-    vault.keys().update(&id, update_request).await.expect("Failed to update key");
+    vault
+        .keys()
+        .update(&id, update_request)
+        .await
+        .expect("Failed to update key");
 
     // Verify only description changed
-    let updated_key = vault.keys().get("github", "token").await.expect("Key not found");
+    let updated_key = vault
+        .keys()
+        .get("github", "token")
+        .await
+        .expect("Key not found");
     assert_eq!(updated_key.app_name, Some("github".to_string()));
     assert_eq!(updated_key.key_name, "token");
     assert_eq!(updated_key.key_value, "ghp_secret123");

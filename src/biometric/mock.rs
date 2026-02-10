@@ -89,7 +89,7 @@ impl BiometricProvider for MockBiometricProvider {
     async fn check_availability(&self) -> BiometricAvailability {
         self.state
             .lock()
-            .map(|s| s.availability.clone())
+            .map(|s| s.availability)
             .unwrap_or(BiometricAvailability::NotSupported)
     }
 
@@ -119,7 +119,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_provider_availability() {
-        let provider = MockBiometricProvider::with_availability(BiometricAvailability::NotConfigured);
+        let provider =
+            MockBiometricProvider::with_availability(BiometricAvailability::NotConfigured);
         assert_eq!(
             provider.check_availability().await,
             BiometricAvailability::NotConfigured
@@ -135,7 +136,7 @@ mod tests {
     #[tokio::test]
     async fn test_mock_provider_verification() {
         let provider = MockBiometricProvider::new();
-        
+
         // Should succeed by default
         assert!(provider.verify("test").await.unwrap());
         assert_eq!(provider.verify_call_count(), 1);

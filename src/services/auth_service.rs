@@ -24,11 +24,11 @@ use std::time::Duration;
 
 use tokio::sync::RwLock;
 
-use crate::core::{validate_pin, BiometricAvailability, MAX_PIN_LENGTH, MIN_PIN_LENGTH};
-#[cfg(feature = "windows-biometric")]
-use crate::core::BiometricProvider;
 #[cfg(feature = "windows-biometric")]
 use crate::biometric::CredentialStore;
+#[cfg(feature = "windows-biometric")]
+use crate::core::BiometricProvider;
+use crate::core::{validate_pin, BiometricAvailability, MAX_PIN_LENGTH, MIN_PIN_LENGTH};
 use crate::crypto::VaultKey;
 use crate::database::VaultDb;
 use crate::error::{Result, VaultError};
@@ -69,7 +69,7 @@ impl AuthService {
     pub fn new(db: Arc<VaultDb>, crypto: Arc<CryptoService>) -> Self {
         #[cfg(feature = "windows-biometric")]
         let credential_store = CredentialStore::new(&db.db_path).ok();
-        
+
         Self {
             db,
             crypto,
@@ -544,7 +544,8 @@ impl AuthService {
         message: &str,
         window_handle: isize,
     ) -> Result<()> {
-        self.unlock_with_biometric_impl(message, Some(window_handle)).await
+        self.unlock_with_biometric_impl(message, Some(window_handle))
+            .await
     }
 
     /// Internal implementation for biometric unlock with optional window handle.
@@ -557,7 +558,9 @@ impl AuthService {
         use crate::biometric::WindowsHelloProvider;
 
         // Check if credential store is configured
-        let credential_store = self.credential_store.as_ref()
+        let credential_store = self
+            .credential_store
+            .as_ref()
             .ok_or(VaultError::BiometricFailed)?;
 
         // Create provider with or without window handle
@@ -613,7 +616,7 @@ impl AuthService {
         if !self.is_unlocked_async().await {
             return Err(VaultError::Locked);
         }
-        
+
         // Validate the PIN is correct by deriving the key and comparing
         // This prevents storing an incorrect PIN that would fail later
         let pool = &self.db.pool;
@@ -647,7 +650,9 @@ impl AuthService {
         }
 
         // PIN is valid - store it encrypted with DPAPI
-        let credential_store = self.credential_store.as_ref()
+        let credential_store = self
+            .credential_store
+            .as_ref()
             .ok_or(VaultError::BiometricFailed)?;
         credential_store.store_pin(pin)?;
 
@@ -666,7 +671,9 @@ impl AuthService {
     /// ```
     #[cfg(feature = "windows-biometric")]
     pub async fn disable_biometric_storage(&self) -> Result<()> {
-        let credential_store = self.credential_store.as_ref()
+        let credential_store = self
+            .credential_store
+            .as_ref()
             .ok_or(VaultError::BiometricFailed)?;
         credential_store.delete_pin()?;
         Ok(())
@@ -679,7 +686,8 @@ impl AuthService {
     /// `true` if a PIN is stored for biometric unlock, `false` otherwise.
     #[cfg(feature = "windows-biometric")]
     pub fn is_biometric_storage_enabled(&self) -> bool {
-        self.credential_store.as_ref()
+        self.credential_store
+            .as_ref()
             .map(|cs| cs.has_stored_pin())
             .unwrap_or(false)
     }
@@ -709,7 +717,6 @@ impl AuthService {
     pub fn is_biometric_storage_enabled(&self) -> bool {
         false
     }
-
 }
 
 #[cfg(test)]

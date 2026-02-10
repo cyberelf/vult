@@ -169,7 +169,7 @@ impl VaultDb {
     /// Creates a new vault database connection pool
     pub async fn new(database_path: &str) -> Result<Self> {
         let pool = SqlitePool::connect(database_path).await?;
-        let db = Self { 
+        let db = Self {
             pool,
             db_path: database_path.to_string(),
         };
