@@ -59,6 +59,7 @@ vult/
 - **State Management**: Simple in-memory objects (`allKeys`, `keyVisibility`, `keyEditStates`, `keyData`)
 - **Table-Based UI**: Inline editing, show/hide toggle, copy to clipboard
 - **No Framework**: Vanilla JS for simplicity and security auditability
+- **Known Type Issues**: 6 type errors in shadcn UI components (third-party library) - these don't affect production builds
 
 ## Common Tasks
 
@@ -168,12 +169,12 @@ cd ui-sveltekit && npm run test -- <relevant_test_file>
 |------------|----------------|
 | Rust source files | `cargo clippy`, `cargo check`, `cargo test` |
 | Tauri commands | `cargo clippy`, frontend build, type check |
-| Frontend files | `npm run build` (type check recommended but not blocking) |
+| Frontend files | `npm run build` (primary), type check (informational) |
 | Database schema | Migration tests, integration tests |
 | Security code | Full test suite + security tests |
 | Documentation only | None (but verify markdown syntax) |
 
-**Note**: Frontend `npm run check` (strict type checking) currently has known issues documented in [docs/FRONTEND_TYPE_ISSUES.md](docs/FRONTEND_TYPE_ISSUES.md). Production build (`npm run build`) succeeds and is the primary quality gate for frontend changes. Strive to fix type errors but don't block commits if only type check fails while build succeeds.
+**Note**: Frontend has 6 known type errors in third-party shadcn UI components (Button.svelte, Dialog.svelte). These don't affect production builds. The `quick_check.sh` script treats type check as informational and focuses on build success as the primary quality gate.
 
 ### When to Skip Quality Gates
 
