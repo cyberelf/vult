@@ -78,6 +78,73 @@ if let Ok(max) = i64::try_from(u64::MAX) {
 
 ---
 
+## 2026-02-10: Missing Quality Gates in Ad-Hoc Code Changes
+
+### The Bug
+During Windows Hello implementation, clippy warnings were introduced but not caught immediately because quality gates weren't consistently applied during ad-hoc question responses.
+
+**Context**: While responding to random user questions (not in structured OpenSpec workflow), code changes were made without running quality checks.
+
+**The Issue**:
+- Clippy errors were introduced in earlier changes
+- Errors only discovered several questions later by user
+- Quality gates exist (`cargo clippy --features "cli gui" -- -D warnings`) but not consistently run
+- Ad-hoc questions bypassed structured quality control
+
+**User Observation**: 
+> "I found out that cargo clippy reports error and the fix happens several questions ago. I fixed the error already, but as we already have clippy as our quality gate, I suspect the failure of applying this is because of the random questions."
+
+### Root Cause Analysis
+
+1. **Process Gap**: No formal workflow for handling ad-hoc user questions
+2. **Inconsistent Quality Checks**: Quality gates only applied in structured workflows (OpenSpec)
+3. **Random Questions Bypass**: Ad-hoc questions treated differently from planned features
+4. **No Type Classification**: Didn't distinguish between information requests vs code modifications
+
+### Lessons Learned
+
+1. **All code changes require quality gates**: Whether in OpenSpec workflow or ad-hoc questions
+2. **Classify questions first**: Identify if answer requires code modification
+3. **Quality gates are not optional**: Must run after EVERY code change, no exceptions
+4. **Early detection saves time**: Running clippy immediately catches issues before they compound
+5. **Process consistency**: Same standards apply regardless of how the change was requested
+
+### Prevention Strategies
+
+1. ✅ Add "Ad-Hoc Question Workflow" section to AGENTS.md
+2. ✅ Define question type classification (Information, Code Modification, Investigation)
+3. ✅ Document mandatory quality gate checklist by change type
+4. ✅ Establish "Constitution" rule: Quality gates are MANDATORY for code changes
+5. ✅ Include examples of good vs bad workflow execution
+
+### Quality Gate Checklist
+
+**Must run after ANY Rust code change:**
+```bash
+cargo clippy --features "cli gui" -- -D warnings  # Linting
+cargo fmt --check                                  # Formatting
+cargo check --features "cli gui"                   # Type check
+cargo test <relevant_module>                       # Related tests
+```
+
+**Must run after ANY frontend change:**
+```bash
+cd ui-sveltekit && npm run build                  # Build check
+```
+
+### Workflow Rules
+
+| Question Type | Quality Gates Required? |
+|--------------|------------------------|
+| Information request | No |
+| Code modification | ✅ YES - MANDATORY |
+| Investigation (with changes) | ✅ YES - MANDATORY |
+| Documentation only | No (verify markdown syntax) |
+
+**Constitution**: For any code modification, running quality gates is MANDATORY, not optional. Skipping quality checks violates project standards and can introduce bugs.
+
+---
+
 ## Template for Future Entries
 
 ### [Date]: [Brief Title]

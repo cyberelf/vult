@@ -100,6 +100,119 @@ When making changes that involve:
 
 Use the OpenSpec workflow below:
 
+## Ad-Hoc Question Workflow
+
+When responding to random user questions (not part of OpenSpec workflow), follow this quality control process:
+
+### Step 1: Identify Question Type
+
+Classify the question into one of these categories:
+
+1. **Information Request**: User asking about code, architecture, documentation
+   - No code changes needed
+   - Provide answer with references
+   - Skip to quality checks unnecessary
+
+2. **Code Modification Request**: User asking to fix, improve, or add code
+   - Requires code changes
+   - **MUST follow quality gates below**
+   - Examples: "fix this bug", "add this feature", "improve this UI"
+
+3. **Investigation Request**: User asking to debug or analyze
+   - May or may not require changes
+   - If changes made, apply quality gates
+
+### Step 2: For Code Modifications - Apply Quality Gates
+
+**MANDATORY after ANY code change:**
+
+```bash
+# 1. Linting - ALWAYS run for Rust changes
+cargo clippy --features "cli gui" -- -D warnings
+
+# 2. Formatting check
+cargo fmt --check
+
+# 3. Type check
+cargo check --features "cli gui"
+
+# 4. Frontend build (if UI changes)
+cd ui-sveltekit && npm run build
+
+# 5. Run related tests
+cargo test <relevant_module>
+
+# 6. For critical changes, run full test suite
+cargo test --features "cli gui"
+```
+
+### Step 3: Report Quality Gate Results
+
+**If quality gates pass:**
+- Provide "✅ Quality checks passed" summary
+- List what was checked (clippy, tests, build)
+
+**If quality gates fail:**
+- **STOP and fix issues before continuing**
+- Show errors to user
+- Fix issues
+- Re-run quality gates
+- Only proceed after all gates pass
+
+### Examples
+
+#### ❌ BAD (No Quality Gates)
+```
+User: "Can you fix the unlock button styling?"
+Agent: [makes changes to UnlockScreen.svelte]
+Agent: "Done! The button now has consistent styling."
+# Missing: No build check, no clippy, no verification
+```
+
+#### ✅ GOOD (With Quality Gates)
+```
+User: "Can you fix the unlock button styling?"
+Agent: [makes changes to UnlockScreen.svelte]
+Agent: [runs npm run build in ui-sveltekit]
+Agent: [runs cargo clippy --features gui -- -D warnings]
+Agent: "✅ Changes complete. Quality checks:
+- Frontend build: ✅ Passed
+- Clippy: ✅ No warnings
+- Type check: ✅ Passed"
+```
+
+#### ✅ GOOD (Quality Gate Failure Caught)
+```
+User: "Can you add this new field to the struct?"
+Agent: [makes changes to types.rs]
+Agent: [runs cargo clippy]
+Output: "warning: unused variable `new_field`"
+Agent: "Found clippy warning. Fixing..."
+Agent: [fixes the issue]
+Agent: [re-runs clippy]
+Agent: "✅ Quality checks passed after fix"
+```
+
+### Quality Gate Checklist by Change Type
+
+| Change Type | Required Checks |
+|------------|----------------|
+| Rust source files | `cargo clippy`, `cargo check`, `cargo test` |
+| Tauri commands | `cargo clippy`, frontend build, type check |
+| Frontend files | `npm run build`, lint (if applicable) |
+| Database schema | Migration tests, integration tests |
+| Security code | Full test suite + security tests |
+| Documentation only | None (but verify markdown syntax) |
+
+### When to Skip Quality Gates
+
+Only skip quality gates for:
+- Pure documentation edits (README, AGENTS.md, comments)
+- Configuration file updates (without code impact)
+- Simple typo fixes in strings
+
+**Constitution**: For any code modification, running quality gates is MANDATORY, not optional. Skipping quality checks violates project standards and can introduce bugs.
+
 ## Code Conventions
 
 ### Rust
