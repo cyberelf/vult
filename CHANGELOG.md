@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-02-10
+
+### Added
+- **Windows Hello Integration**: Optional biometric authentication for Windows 10 (1903+) and Windows 11
+  - Optional `windows-biometric` feature flag
+  - BiometricProvider trait abstraction for platform-specific implementations
+  - WindowsHelloProvider using UserConsentVerifier API with desktop HWND support
+  - BiometricAvailability detection (Available, NotConfigured, DeviceNotPresent, NotSupported)
+  - Automatic PIN fallback when biometric fails or is unavailable
+  - User setting to enable/disable Windows Hello
+  - MockBiometricProvider for testing
+- **Secure Credential Storage**: Platform-native credential storage for biometric setup
+  - Windows DPAPI-based credential store with per-vault isolation
+  - Credential validation before storage
+  - Automatic cleanup on disable
+- **GUI Enhancements**: Improved unlock screen UI
+  - Windows Hello button with biometric icon
+  - Toggle buttons for switching between PIN and biometric auth
+  - Consistent button styling across authentication methods
+  - Biometric settings in vault settings screen
+
+### Fixed
+- **Windows Hello Modal Z-Order**: Fixed modal appearing behind main window
+  - Used IUserConsentVerifierInterop desktop API with HWND parameter
+  - Proper window parenting for system modal dialogs
+  - Added raw-window-handle support for HWND extraction from Tauri window
+
+### Changed
+- Updated authentication specification with Windows Hello requirements
+- Enhanced AGENTS.md with security architecture principles and biometric integration guidelines
+- Added comprehensive Windows Hello integration documentation to LESSONS.md
+
+### Technical
+- Added windows-rs 0.58 with Security_Credentials_UI and Win32_System_WinRT features
+- Added raw-window-handle 0.6 for native window handle extraction
+- Added async-trait 0.1 for BiometricProvider trait objects
+- 6 new integration tests for biometric functionality
+- Updated Tauri capabilities for new biometric commands
+
 ## [0.2.0] - 2026-02-07
 
 ### Added

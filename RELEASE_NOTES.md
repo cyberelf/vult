@@ -1,8 +1,139 @@
-# Release Notes - v0.2.0
+# Release Notes - v0.2.1
 
-**Release Date:** February 7, 2026
+**Release Date:** February 10, 2026
 
-## 🎉 Major Release: Modern UI & Enhanced Architecture
+## 🔐 Windows Hello Biometric Authentication
+
+This release adds optional Windows Hello integration, allowing users to unlock their vault using biometric authentication (fingerprint, face recognition, or iris scanning) on Windows 10 (1903+) and Windows 11.
+
+## ✨ New Features
+
+### 🪟 Windows Hello Integration
+
+- **Optional Biometric Authentication**: Unlock your vault with fingerprint, face, or iris recognition
+- **Automatic Availability Detection**: System automatically detects if Windows Hello is configured
+- **Seamless PIN Fallback**: If biometric fails or is unavailable, PIN authentication is always available
+- **User Control**: Enable/disable Windows Hello in settings - completely optional feature
+- **Platform-Specific**: Windows Hello on Windows 10/11; other platforms continue with PIN-only authentication
+- **Privacy-First**: Biometric data never leaves Windows security subsystem
+
+**Requirements:**
+- Windows 10 version 1903 (build 18362) or later, OR Windows 11
+- Compatible biometric hardware (fingerprint reader, IR camera, etc.)
+- Windows Hello configured in Windows Settings
+
+### 🔒 Secure Credential Storage
+
+- **DPAPI-Based Storage**: Uses Windows Data Protection API for secure credential storage
+- **Per-Vault Isolation**: Credentials scoped by database path for multi-vault support
+- **Automatic Cleanup**: Credentials removed when Windows Hello is disabled
+- **Validation Before Storage**: Prevents storing incorrect credentials
+
+### 🎨 UI Improvements
+
+- **Windows Hello Button**: New biometric unlock button with fingerprint icon
+- **Toggle Authentication Methods**: Clear buttons to switch between PIN and Windows Hello
+- **Consistent Styling**: All unlock buttons follow the same design language
+- **Biometric Settings**: New settings panel for managing Windows Hello
+
+## 🐛 Fixed
+
+### Windows Hello Modal Z-Order Issue
+
+- **Fixed**: Windows Hello authentication modal now appears properly on top of the main window
+- **Root Cause**: Desktop applications require `IUserConsentVerifierInterop` with HWND parameter, not the UWP API
+- **Solution**: Implemented proper Windows Desktop API integration with window handle passing
+- **Technical**: Added `raw-window-handle` support for extracting HWND from Tauri window
+
+## 🔧 Technical Details
+
+### New Dependencies
+
+- **windows-rs 0.58**: Added `Security_Credentials_UI` and `Win32_System_WinRT` features for Windows Hello API access
+- **raw-window-handle 0.6**: For native window handle extraction from Tauri
+- **async-trait 0.1**: For BiometricProvider trait objects
+
+### Architecture
+
+- **BiometricProvider Trait**: Platform-agnostic abstraction for biometric authentication
+- **WindowsHelloProvider**: Windows implementation using `UserConsentVerifier` API
+- **MockBiometricProvider**: Test doubles for comprehensive testing without hardware
+- **Service Layer Integration**: Biometric methods integrated into `AuthService`
+
+### Feature Flag
+
+```toml
+# Enable Windows Hello (automatically enabled in GUI builds)
+cargo build --features windows-biometric
+```
+
+The `windows-biometric` feature is automatically included in the `gui` feature, so GUI builds always support Windows Hello when available.
+
+### Testing
+
+- **6 New Integration Tests**: Comprehensive biometric functionality coverage
+  - Availability detection tests
+  - Unlock flow with fallback behavior
+  - Mock provider for testing without hardware
+- **All Tests Passing**: Full test suite coverage including biometric features
+
+## 📚 Documentation Updates
+
+- **AGENTS.md**: Added security architecture principles and Windows Hello integration guidelines
+- **LESSONS.md**: Documented Windows Hello modal z-order debugging journey and solution
+- **Authentication Spec**: Updated with complete Windows Hello requirements and scenarios
+
+## 🚀 How to Use Windows Hello
+
+### Enable Windows Hello
+
+1. **Set up Windows Hello** (if not already configured):
+   - Open Windows Settings → Accounts → Sign-in options
+   - Set up fingerprint, face recognition, or PIN
+   
+2. **Enable in Vult**:
+   - Open Vult and unlock with your PIN
+   - Go to Settings
+   - Enable "Use Windows Hello"
+   - Confirm with your PIN
+
+3. **Unlock with Windows Hello**:
+   - Click "Unlock with Windows Hello" button
+   - Complete biometric verification
+   - Vault unlocks automatically on success
+
+### Disable Windows Hello
+
+- Go to Settings → Disable "Use Windows Hello"
+- Vult will continue using PIN authentication
+
+## 📦 Download
+
+- **Windows Installer**: `Vult_0.2.1_x64-setup.exe`
+- **Windows MSI**: `Vult_0.2.1_x64_en-US.msi`
+- **Portable Executable**: `vult-gui.exe` (in release bundle)
+
+## 🔄 Upgrade from v0.2.0
+
+No breaking changes - simply install the new version. Your existing vault database and settings are fully compatible.
+
+**Windows Hello is completely optional** - if you don't enable it, Vult works exactly as before with PIN authentication.
+
+## 🐛 Known Issues
+
+None reported for this release.
+
+## 📝 Full Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete list of changes.
+
+## 🙏 Credits
+
+Windows Hello integration designed and implemented following Microsoft's desktop application guidelines for biometric authentication.
+
+---
+
+**Previous Release:** [v0.2.0 Release Notes](https://github.com/cyberelf/vult/releases/tag/v0.2.0)
 
 This release marks a significant milestone with the complete migration to SvelteKit, bringing a modern, type-safe frontend while maintaining all the powerful CLI and library features introduced in v0.1.0.
 
