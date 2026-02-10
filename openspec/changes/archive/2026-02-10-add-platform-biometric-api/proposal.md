@@ -5,7 +5,6 @@ Windows users expect Windows Hello biometric unlock for faster, low-friction acc
 ## What Changes
 
 - Add Windows Hello biometric unlock using Windows.Security.Credentials.UI APIs via windows-rs crate with availability detection.
-- **Critical Implementation Detail**: Use `IUserConsentVerifierInterop` desktop API with HWND parameter (not the UWP API) to properly parent the authentication modal.
 - Add DPAPI-based secure credential storage with per-vault isolation for biometric setup.
 - Add a user-facing toggle and fallback behavior to PIN on failure or unavailable devices.
 - Add error mapping for Windows Hello failures (no sensitive data exposed).
@@ -14,17 +13,6 @@ Windows users expect Windows Hello biometric unlock for faster, low-friction acc
 - Windows-only feature flag for biometric support.
 - UI improvements: Windows Hello button, toggle buttons for auth method switching, consistent styling.
 
-## Implementation Notes (Post-Implementation)
-
-**Critical Discovery**: During implementation, discovered that desktop applications MUST use `IUserConsentVerifierInterop::RequestVerificationForWindowAsync(HWND, message)` instead of the UWP `UserConsentVerifier::RequestVerificationAsync(message)`. The UWP API causes the Windows Hello modal to appear behind the Tauri window, making it inaccessible.
-
-**Additional Dependencies Required**:
-- `raw-window-handle = "0.6"` for extracting HWND from Tauri window
-- `Win32_System_WinRT` feature in windows crate for IUserConsentVerifierInterop
-- `Win32_Security_Cryptography` feature for DPAPI credential storage
-- `async-trait = "0.1"` for BiometricProvider trait objects
-
-**Documented in LESSONS.md**: Complete debugging journey of Windows Hello modal z-order issue with three failed attempts before finding the proper desktop API solution.
 
 ## Capabilities
 
