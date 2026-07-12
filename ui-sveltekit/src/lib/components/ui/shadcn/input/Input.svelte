@@ -1,5 +1,6 @@
 <script lang="ts">
   import { cn } from '$lib/utils';
+  import type { HTMLInputAttributes } from 'svelte/elements';
 
   type InputType = 'text' | 'password' | 'email' | 'url' | 'number' | 'tel';
 
@@ -13,7 +14,7 @@
     id?: string;
     name?: string;
     disabled?: boolean;
-    autocomplete?: string;
+    autocomplete?: HTMLInputAttributes['autocomplete'];
     autofocus?: boolean;
   }
 
@@ -26,7 +27,7 @@
   export let id: string | undefined = undefined;
   export let name: string | undefined = undefined;
   export let disabled: boolean = false;
-  export let autocomplete: string | undefined = undefined;
+  export let autocomplete: HTMLInputAttributes['autocomplete'] = undefined;
   export let autofocus: boolean = false;
 </script>
 
@@ -38,6 +39,7 @@
   {required}
   {minlength}
   {disabled}
+  {autocomplete}
   bind:value
   class={cn(
     'flex h-11 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',

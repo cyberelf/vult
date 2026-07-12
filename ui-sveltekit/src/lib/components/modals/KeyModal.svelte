@@ -6,6 +6,8 @@
   import { Input } from '$lib/components/ui/shadcn/input';
   import { Textarea } from '$lib/components/ui/shadcn/textarea';
   import { Label } from '$lib/components/ui/shadcn/label';
+  import { generateSecret } from '$lib/utils';
+  import { Eye, EyeOff, KeyRound } from 'lucide-svelte';
   import type { ApiKey } from '$lib/types';
 
   interface Props {
@@ -22,6 +24,7 @@
   let apiUrl = $state('');
   let description = $state('');
   let processing = $state(false);
+  let showKey = $state(false);
 
   // Populate form when editing
   $effect(() => {
@@ -39,7 +42,12 @@
       apiUrl = '';
       description = '';
     }
+    showKey = false;
   });
+
+  function handleGenerateSecret() {
+    keyValue = generateSecret();
+  }
 
   function getErrorMessage(): string | null {
     if (keyName.length === 0) return 'Key name is required';
@@ -150,14 +158,46 @@
 
         <div class="space-y-2">
           <Label htmlFor="key-value">API Key</Label>
-          <Input
-            id="key-value"
-            type="password"
-            bind:value={keyValue}
-            placeholder="ghp_xxxxxxxxxxxx"
-            required
-            disabled={processing}
-          />
+          <div class="relative">
+            <Input
+              id="key-value"
+              type={showKey ? 'text' : 'password'}
+              bind:value={keyValue}
+              placeholder="ghp_xxxxxxxxxxxx"
+              required
+              disabled={processing}
+              autocomplete="new-password"
+              className={mode === 'add' ? 'pr-20 font-mono' : 'pr-11 font-mono'}
+            />
+            <div class="absolute inset-y-0 right-1 flex items-center">
+              {#if mode === 'add'}
+                <button
+                  type="button"
+                  class="p-2 text-muted-foreground hover:text-foreground rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  onclick={handleGenerateSecret}
+                  disabled={processing}
+                  aria-label="Generate random secret"
+                  title="Generate random secret"
+                >
+                  <KeyRound class="w-4 h-4" />
+                </button>
+              {/if}
+              <button
+                type="button"
+                class="p-2 text-muted-foreground hover:text-foreground rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                onclick={() => showKey = !showKey}
+                disabled={processing}
+                aria-label={showKey ? 'Hide API key' : 'Review API key'}
+                title={showKey ? 'Hide API key' : 'Review API key'}
+              >
+                {#if showKey}
+                  <EyeOff class="w-4 h-4" />
+                {:else}
+                  <Eye class="w-4 h-4" />
+                {/if}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="space-y-2">

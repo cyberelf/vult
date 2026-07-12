@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-07-12
+
+### Added
+- **API key secret controls**: Added an in-field key button that generates a cryptographically secure, 32-character URL-safe secret when creating an API key.
+- **Secret review control**: Added an accessible eye/eye-off button for reviewing and masking API key values before saving.
+
+### Changed
+- Generated secrets remain masked until the user explicitly chooses to reveal them.
+- API key inputs now forward the appropriate password autocomplete hint to the embedded input element.
+
+### Fixed
+- **Windows Hello enrollment**: Fixed valid PINs being rejected because biometric credential enrollment still used the retired first-byte verification format instead of the current constant-time full-hash verification path.
+
+### Technical
+- Added unit and component tests for secure secret generation, masking, reveal/hide behavior, and add-versus-edit control visibility.
+- Added biometric enrollment regression coverage for valid and invalid PINs.
+- Updated the Vitest browser resolution condition to support Svelte component tests under jsdom.
+
 ## [0.2.2] - 2026-02-10
 
 ### Fixed
@@ -153,6 +171,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Copy keys to clipboard with visual feedback
 - Inline editing in table view
 
+[0.2.3]: https://github.com/cyberelf/vult/releases/tag/v0.2.3
 [0.2.2]: https://github.com/cyberelf/vult/releases/tag/v0.2.2
 [0.2.1]: https://github.com/cyberelf/vult/releases/tag/v0.2.1
 [0.2.0]: https://github.com/cyberelf/vult/releases/tag/v0.2.0

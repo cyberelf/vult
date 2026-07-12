@@ -6,7 +6,7 @@
 
 A cross-platform desktop application for securely storing and managing API keys with client-side encryption.
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-0.2.3-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Rust](https://img.shields.io/badge/rust-1.80%2B-orange)
 ![Tauri](https://img.shields.io/badge/tauri-2.1%2B-blueviolet)

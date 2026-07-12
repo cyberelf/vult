@@ -687,37 +687,9 @@ impl AuthService {
             return Err(VaultError::Locked);
         }
 
-        // Validate the PIN is correct by deriving the key and comparing
-        // This prevents storing an incorrect PIN that would fail later
-        let pool = &self.db.pool;
-        let row = sqlx::query("SELECT salt, pin_hash FROM vault_config WHERE id = 1")
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| VaultError::Database(e.to_string()))?
-            .ok_or(VaultError::NotInitialized)?;
-
-        use sqlx::Row;
-        let salt: Vec<u8> = row.get("salt");
-        let mut salt_array = [0u8; 32];
-        if salt.len() != 32 {
-            return Err(VaultError::Database("Invalid salt length".to_string()));
-        }
-        salt_array.copy_from_slice(&salt);
-
-        // Derive key from provided PIN
-        let derived_key = self.crypto.derive_master_key(pin, &salt_array)?;
-
-        // Verify the PIN is correct by comparing with stored hash
-        let stored_hash: String = row.get("pin_hash");
-        let parts: Vec<&str> = stored_hash.split(':').collect();
-        let expected_byte = parts
-            .get(1)
-            .and_then(|s| s.parse::<u8>().ok())
-            .unwrap_or(255);
-
-        if derived_key.as_bytes()[0] != expected_byte {
-            return Err(VaultError::InvalidPin);
-        }
+        // Reuse the canonical PIN verification path so enrollment follows the
+        // same constant-time checks and legacy-format migration as normal unlock.
+        self.unlock(pin).await?;
 
         // PIN is valid - store it encrypted with DPAPI
         let credential_store = self

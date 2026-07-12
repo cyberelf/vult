@@ -181,7 +181,7 @@ describe('Tauri Service Layer', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
       };
-      mockInvoke.mockResolvedValue(newKey);
+      mockInvoke.mockResolvedValue({ success: true, data: newKey, error: null });
 
       const result = await createApiKey({
         appName: 'TestApp',
@@ -192,25 +192,37 @@ describe('Tauri Service Layer', () => {
       });
 
       expect(mockInvoke).toHaveBeenCalledWith('create_api_key', {
+        input: {
+          app_name: 'TestApp',
+          key_name: 'Test Key',
+          key_value: 'test_key_value',
+          api_url: 'https://api.test.com',
+          description: 'Test description',
+        },
+      });
+      expect(result).toMatchObject({
+        ...newKey,
         appName: 'TestApp',
         keyName: 'Test Key',
-        apiKey: 'test_key_value',
+        keyValue: 'encrypted',
         apiUrl: 'https://api.test.com',
-        description: 'Test description',
       });
-      expect(result).toEqual(newKey);
     });
 
     it('should handle optional parameters', async () => {
       mockInvoke.mockResolvedValue({
-        id: 1,
-        app_name: 'TestApp',
-        key_name: 'Test Key',
-        api_url: null,
-        description: null,
-        key_value: 'encrypted',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
+        success: true,
+        data: {
+          id: 1,
+          app_name: 'TestApp',
+          key_name: 'Test Key',
+          api_url: null,
+          description: null,
+          key_value: 'encrypted',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        error: null,
       });
 
       await createApiKey({
@@ -220,11 +232,13 @@ describe('Tauri Service Layer', () => {
       });
 
       expect(mockInvoke).toHaveBeenCalledWith('create_api_key', {
-        appName: 'TestApp',
-        keyName: 'Test Key',
-        apiKey: 'test_key_value',
-        apiUrl: null,
-        description: null,
+        input: {
+          app_name: 'TestApp',
+          key_name: 'Test Key',
+          key_value: 'test_key_value',
+          api_url: null,
+          description: null,
+        },
       });
     });
 
@@ -244,14 +258,18 @@ describe('Tauri Service Layer', () => {
   describe('updateApiKey', () => {
     it('should call update_api_key command with id and params', async () => {
       mockInvoke.mockResolvedValue({
-        id: 1,
-        app_name: 'UpdatedApp',
-        key_name: 'Updated Key',
-        api_url: null,
-        description: null,
-        key_value: 'encrypted',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-02T00:00:00Z',
+        success: true,
+        data: {
+          id: 1,
+          app_name: 'UpdatedApp',
+          key_name: 'Updated Key',
+          api_url: null,
+          description: null,
+          key_value: 'encrypted',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-02T00:00:00Z',
+        },
+        error: null,
       });
 
       await updateApiKey({
@@ -262,12 +280,12 @@ describe('Tauri Service Layer', () => {
       });
 
       expect(mockInvoke).toHaveBeenCalledWith('update_api_key', {
-        id: 1,
-        appName: 'UpdatedApp',
-        keyName: 'Updated Key',
-        apiKey: 'new_key_value',
-        apiUrl: null,
-        description: null,
+        input: {
+          id: '1',
+          app_name: 'UpdatedApp',
+          key_name: 'Updated Key',
+          key_value: 'new_key_value',
+        },
       });
     });
   });

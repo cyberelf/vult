@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { escapeHtml, cn } from '$lib/utils';
+import { escapeHtml, cn, generateSecret } from '$lib/utils';
 
 describe('escapeHtml', () => {
   it('should escape HTML entities', () => {
@@ -65,5 +65,23 @@ describe('cn (className utility)', () => {
 
   it('should handle Tailwind class conflicts (later wins)', () => {
     expect(cn('p-4', 'p-2')).toBe('p-2');
+  });
+});
+
+describe('generateSecret', () => {
+  it('should generate a 32-character URL-safe secret by default', () => {
+    const secret = generateSecret();
+
+    expect(secret).toHaveLength(32);
+    expect(secret).toMatch(/^[A-Za-z0-9_-]+$/);
+  });
+
+  it('should support a custom secret length', () => {
+    expect(generateSecret(48)).toHaveLength(48);
+  });
+
+  it('should reject invalid secret lengths', () => {
+    expect(() => generateSecret(0)).toThrow(RangeError);
+    expect(() => generateSecret(1.5)).toThrow(RangeError);
   });
 });

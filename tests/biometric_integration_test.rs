@@ -112,6 +112,27 @@ async fn test_biometric_unlock_failure() {
 }
 
 #[tokio::test]
+async fn test_biometric_storage_rejects_incorrect_pin() {
+    let (_temp_dir, db_url) = setup_test_vault();
+    let manager = VaultManager::new(&db_url).await.unwrap();
+    manager.auth().init_vault("correct-pin-123").await.unwrap();
+
+    let result = manager
+        .auth()
+        .enable_biometric_storage("incorrect-pin-456")
+        .await;
+
+    assert!(
+        result.is_err(),
+        "Biometric storage must reject an incorrect PIN"
+    );
+    assert!(
+        !manager.auth().is_biometric_storage_enabled(),
+        "An incorrect PIN must never be persisted"
+    );
+}
+
+#[tokio::test]
 async fn test_biometric_fallback_to_pin() {
     let (_temp_dir, db_url) = setup_test_vault();
     let mock_provider = MockBiometricProvider::new();

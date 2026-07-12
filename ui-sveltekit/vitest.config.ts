@@ -20,6 +20,7 @@ export default defineConfig({
     root: resolve(__dirname),
   },
   resolve: {
+    conditions: ['browser'],
     alias: {
       $lib: resolve(__dirname, './src/lib'),
     },

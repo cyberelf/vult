@@ -1,6 +1,6 @@
 [package]
 name = "vult"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 description = "Secure API key vault with PIN authentication and AES-256-GCM encryption"
 license = "MIT"
@@ -107,4 +107,3 @@ tempfile = "3.25.0"
 test-case = "3.3"
 assert_cmd = "2.0"
 predicates = "3.1"
-
