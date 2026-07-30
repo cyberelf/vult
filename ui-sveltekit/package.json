@@ -39,7 +39,7 @@
 	},
 	"dependencies": {
 		"@tailwindcss/container-queries": "^0.1.1",
-		"@tauri-apps/api": "^2.10.1",
+		"@tauri-apps/api": "^2.11.0",
 		"lucide-svelte": "^0.563.0"
 	}
 }
